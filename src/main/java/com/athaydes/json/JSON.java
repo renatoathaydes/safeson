@@ -138,9 +138,8 @@ public final class JSON {
                     builder.put((byte) c);
                 }
             }
-            byte[] bytes = new byte[builder.position()];
-            System.arraycopy(builder.array(), 0, bytes, 0, bytes.length);
-            return new String(bytes, StandardCharsets.UTF_8);
+            byte[] bytes = builder.array();
+            return new String(bytes, 0, builder.position(), StandardCharsets.UTF_8);
         } else {
             throw new JsonException(stream.index, "Expected '\"', got '" + ((char) stream.bt) + "'");
         }
@@ -225,10 +224,10 @@ public final class JSON {
         int b;
         while ((b = stream.read()) > 0) {
             switch (b) {
-                case 0x20:
-                case 0x0A:
-                case 0x0D:
-                case 0x09:
+                case ' ':
+                case '\t':
+                case '\n':
+                case '\r':
                     continue;
                 default:
                     break;
