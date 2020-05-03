@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class JSONConfigTest implements TestHelper {
     @Test
     void stringBufferCapacity() {
-        var json = new JSON(new JSONConfig(4096, 4, 4, true));
+        var json = new JSON(new JsonConfig(4096, 4, 4, true));
 
         // grows once
         var txt = IntStream.range(0, 1025).map((i) -> 1).mapToObj(Integer::toString).collect(Collectors.joining());
@@ -33,7 +33,7 @@ public class JSONConfigTest implements TestHelper {
 
     @Test
     public void maxWhitespace() {
-        var json = new JSON(new JSONConfig(4096, 4, 4, true));
+        var json = new JSON(new JsonConfig(4096, 4, 4, true));
         assertEquals("foo", json.parse("    \"foo\"", String.class));
         assertEquals("foo", json.parse("    \"foo\"    ", String.class));
 

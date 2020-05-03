@@ -8,16 +8,16 @@ import java.nio.charset.StandardCharsets;
 
 public final class JSON {
 
-    private final JSONConfig config;
+    private final JsonConfig config;
 
     private ByteBuffer buffer;
 
 
     public JSON() {
-        this(JSONConfig.DEFAULT);
+        this(JsonConfig.DEFAULT);
     }
 
-    public JSON(JSONConfig config) {
+    public JSON(JsonConfig config) {
         this.config = config;
         buffer = ByteBuffer.allocate(Math.min(1024, config.maxStringLength()));
         buffer.mark();

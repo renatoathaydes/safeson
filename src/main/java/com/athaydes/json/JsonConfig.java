@@ -1,14 +1,14 @@
 package com.athaydes.json;
 
-public final class JSONConfig {
-    public static final JSONConfig DEFAULT = new JSONConfig(1024 * 1000, 512, 128, true);
+public final class JsonConfig {
+    public static final JsonConfig DEFAULT = new JsonConfig(1024 * 1000, 512, 128, true);
 
     private final int maxStringLength;
     private final int maxRecursionDepth;
     private final int maxWhitespace;
     private final boolean consumeTrailingContent;
 
-    public JSONConfig(int maxStringLength, int maxRecursionDepth, int maxWhitespace,
+    public JsonConfig(int maxStringLength, int maxRecursionDepth, int maxWhitespace,
                       boolean consumeTrailingContent) {
         if (maxStringLength < 16) {
             throw new IllegalArgumentException("maxStringLength must be 16 or greater");
