@@ -31,15 +31,19 @@ public final class JSON {
     public <T> T parse(InputStream stream, Class<T> type) {
         var jsonStream = new JsonStream(stream);
         try {
+            skipWhitespace(jsonStream);
+            T result;
             if (type.equals(String.class)) {
-                jsonStream.read();
-                return type.cast(parseString(jsonStream));
+                result = type.cast(parseString(jsonStream));
+            } else if (type.equals(Boolean.class)) {
+                result = type.cast(parseBoolean(jsonStream));
+            } else {
+                result = parseObject(jsonStream, type);
             }
-            if (type.equals(Boolean.class)) {
-                jsonStream.read();
-                return type.cast(parseBoolean(jsonStream));
+            if (config.shouldConsumeTrailingContent()) {
+                verifyNoTrailingContent(jsonStream);
             }
-            return parseObject(jsonStream, type);
+            return result;
         } catch (JsonException e) {
             throw e;
         } catch (Exception e) {
@@ -296,17 +300,31 @@ public final class JSON {
         }
     }
 
-    private static void skipWhitespace(JsonStream stream) throws IOException {
+    private void verifyNoTrailingContent(JsonStream jsonStream) throws IOException {
+        skipWhitespace(jsonStream);
+        if (jsonStream.bt >= 0) {
+            throw new JsonException(jsonStream.index, "Illegal trailing content");
+        }
+    }
+
+    private void skipWhitespace(JsonStream stream) throws IOException {
+        var index = 0;
+        final var maxIndex = config.maxWhitespace();
         int b;
+        loop:
         while ((b = stream.read()) > 0) {
             switch (b) {
                 case ' ':
                 case '\t':
                 case '\n':
                 case '\r':
-                    continue;
-                default:
+                    if (index >= maxIndex) {
+                        throw new JsonException(stream.index, "Too much whitespace");
+                    }
+                    index++;
                     break;
+                default:
+                    break loop;
             }
         }
     }
