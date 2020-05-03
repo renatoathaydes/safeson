@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * Most international Strings copied from http://www.madore.org/~david/misc/unitest/
  */
-public class JSONTest implements TestHelper {
+public class JSONStringTest implements TestHelper {
 
     final JSON json = new JSON();
 
@@ -15,6 +15,12 @@ public class JSONTest implements TestHelper {
     public void canParseSimpleStrings() throws Exception {
         var example = "\"hello world\"";
         assertEquals("hello world", json.parse(example, String.class));
+    }
+
+    @Test
+    public void canParseUsingNoTypeParameter() {
+        var example = "\"JSON\"";
+        assertEquals("JSON", json.parse(example));
     }
 
     @Test
@@ -73,12 +79,6 @@ public class JSONTest implements TestHelper {
         var example = "\"\\u65e5\\u672c\\u8a9e\\u6587\\u5b57\\u5217\"";
         assertEquals("\u65e5\u672c\u8a9e\u6587\u5b57\u5217",
                 json.parse(example, String.class));
-    }
-
-    @Test
-    public void canParseBoolean() throws Exception {
-        assertEquals(true, json.parse("true", Boolean.class));
-        assertEquals(false, json.parse("false", Boolean.class));
     }
 
     @Test

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 public final class JSON {
 
@@ -23,6 +24,11 @@ public final class JSON {
         buffer.mark();
     }
 
+    public Object parse(String json) {
+        var stream = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
+        return parse(stream, Object.class);
+    }
+
     public <T> T parse(String json, Class<T> type) {
         var stream = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
         return parse(stream, type);
@@ -37,6 +43,14 @@ public final class JSON {
                 result = type.cast(parseString(jsonStream));
             } else if (type.equals(Boolean.class)) {
                 result = type.cast(parseBoolean(jsonStream));
+            } else if (type.equals(List.class)) {
+                result = type.cast(parseArray(jsonStream));
+            } else if (Number.class.isAssignableFrom(type)) {
+                result = type.cast(parseNumber(jsonStream));
+            } else if (type.equals(Object.class)) {
+                result = type.cast(probeTypeThenParse(jsonStream));
+            } else if (type.equals(Void.class)) {
+                result = type.cast(parseNull(jsonStream));
             } else {
                 result = parseObject(jsonStream, type);
             }
@@ -49,6 +63,35 @@ public final class JSON {
         } catch (Exception e) {
             throw new JsonException(e);
         }
+    }
+
+    private Object probeTypeThenParse(JsonStream stream) throws Exception {
+        switch (stream.bt) {
+            case '"':
+                return parseString(stream);
+            case 't':
+            case 'f':
+                return parseBoolean(stream);
+            case 'n':
+                return parseNull(stream);
+            case '{':
+                return parseObject(stream, JsonType.OBJECT.getJavaType());
+            case '[':
+                return parseArray(stream);
+            case '-':
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+            case '7':
+            case '8':
+            case '9':
+                return parseNumber(stream);
+        }
+        throw new JsonException(stream.index, "Invalid literal");
     }
 
     private <T> T parseObject(JsonStream stream, Class<T> type) throws Exception {
@@ -83,31 +126,45 @@ public final class JSON {
         return result;
     }
 
-    private boolean parseBoolean(JsonStream stream) throws IOException {
+    private List<?> parseArray(JsonStream stream) {
+        throw new UnsupportedOperationException("parseArray");
+    }
+
+    private Void parseNull(JsonStream stream) throws IOException {
+        if (stream.bt == 'n') {
+            if (stream.read() == 'u') {
+                if (stream.read() == 'l') {
+                    if (stream.read() == 'l') {
+                        return null;
+                    }
+                }
+            }
+        }
+        throw new JsonException(stream.index, "Invalid literal");
+    }
+
+    private Boolean parseBoolean(JsonStream stream) throws IOException {
         switch (stream.bt) {
             case 't':
                 if (stream.read() == 'r') {
                     if (stream.read() == 'u') {
                         if (stream.read() == 'e') {
-                            return true;
+                            return Boolean.TRUE;
                         }
                     }
                 }
-                throw new RuntimeException();
             case 'f':
                 if (stream.read() == 'a') {
                     if (stream.read() == 'l') {
                         if (stream.read() == 's') {
                             if (stream.read() == 'e') {
-                                return false;
+                                return Boolean.FALSE;
                             }
                         }
                     }
                 }
-                throw new RuntimeException();
-            default:
-                throw new RuntimeException();
         }
+        throw new JsonException(stream.index, "Invalid literal");
     }
 
     private Object parseNumber(JsonStream stream) {
