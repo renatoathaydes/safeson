@@ -7,25 +7,47 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 public final class JSON {
-    public static <T> T parse(String json, Class<T> type) throws Exception {
+
+    private final JSONConfig config;
+
+    private ByteBuffer buffer;
+
+
+    public JSON() {
+        this(JSONConfig.DEFAULT);
+    }
+
+    public JSON(JSONConfig config) {
+        this.config = config;
+        buffer = ByteBuffer.allocate(Math.min(1024, config.maxStringLength()));
+        buffer.mark();
+    }
+
+    public <T> T parse(String json, Class<T> type) {
         var stream = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
         return parse(stream, type);
     }
 
-    public static <T> T parse(InputStream stream, Class<T> type) throws Exception {
+    public <T> T parse(InputStream stream, Class<T> type) {
         var jsonStream = new JsonStream(stream);
-        if (type.equals(String.class)) {
-            jsonStream.read();
-            return type.cast(parseString(jsonStream));
+        try {
+            if (type.equals(String.class)) {
+                jsonStream.read();
+                return type.cast(parseString(jsonStream));
+            }
+            if (type.equals(Boolean.class)) {
+                jsonStream.read();
+                return type.cast(parseBoolean(jsonStream));
+            }
+            return parseObject(jsonStream, type);
+        } catch (JsonException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new JsonException(e);
         }
-        if (type.equals(Boolean.class)) {
-            jsonStream.read();
-            return type.cast(parseBoolean(jsonStream));
-        }
-        return parseObject(jsonStream, type);
     }
 
-    private static <T> T parseObject(JsonStream stream, Class<T> type) throws Exception {
+    private <T> T parseObject(JsonStream stream, Class<T> type) throws Exception {
         int b;
         T result = type.getDeclaredConstructor().newInstance();
         while ((b = stream.read()) > 0) {
@@ -57,7 +79,7 @@ public final class JSON {
         return result;
     }
 
-    private static boolean parseBoolean(JsonStream stream) throws IOException {
+    private boolean parseBoolean(JsonStream stream) throws IOException {
         switch (stream.bt) {
             case 't':
                 if (stream.read() == 'r') {
@@ -84,7 +106,7 @@ public final class JSON {
         }
     }
 
-    private static Object parseNumber(JsonStream stream) {
+    private Object parseNumber(JsonStream stream) {
         var c = stream.bt;
         while (true) {
             switch (c) {
@@ -103,15 +125,22 @@ public final class JSON {
         }
     }
 
-    private static String parseString(JsonStream stream) throws IOException {
+    private String parseString(JsonStream stream) throws IOException {
+        buffer.reset();
         if (stream.bt == '"') {
-            var builder = ByteBuffer.allocate(4096);
+            var index = 0;
+            // we may add up to 6 bytes in a single loop iteration
+            var bufferMaxBytes = buffer.capacity() - 6;
             int c;
             boolean done = false;
             while ((c = stream.read()) > 0) {
+                index++;
+                if (index == bufferMaxBytes) {
+                    growBuffer(stream.index);
+                }
                 // if the highest bit is 1, this is not ASCII but a UTF-8 codepoint
                 if ((c & 0b1000_0000) == 0b1000_0000) {
-                    builder.put((byte) c);
+                    buffer.put((byte) c);
                     continue;
                 }
                 if (c == '"') {
@@ -126,53 +155,53 @@ public final class JSON {
                     c = stream.read();
                     if (c < 0) throw new JsonException(stream.index, "Unterminated String");
                     if (c == 'u') {
-                        parseHexCode(stream, builder);
+                        parseHexCode(stream);
                     } else {
                         switch (c) {
                             case '"':
-                                builder.put((byte) '"');
+                                buffer.put((byte) '"');
                                 break;
                             case '\\':
-                                builder.put((byte) '\\');
+                                buffer.put((byte) '\\');
                                 break;
                             case '/':
-                                builder.put((byte) '/');
+                                buffer.put((byte) '/');
                                 break;
                             case 'b':
-                                builder.put((byte) '\b');
+                                buffer.put((byte) '\b');
                                 break;
                             case 'f':
-                                builder.put((byte) '\f');
+                                buffer.put((byte) '\f');
                                 break;
                             case 'n':
-                                builder.put((byte) '\n');
+                                buffer.put((byte) '\n');
                                 break;
                             case 'r':
-                                builder.put((byte) '\r');
+                                buffer.put((byte) '\r');
                                 break;
                             case 't':
-                                builder.put((byte) '\t');
+                                buffer.put((byte) '\t');
                                 break;
                             default:
                                 // anything may be escaped!
-                                builder.put((byte) c);
+                                buffer.put((byte) c);
                         }
                     }
                 } else {
-                    builder.put((byte) c);
+                    buffer.put((byte) c);
                 }
             }
             if (!done) {
                 throw new JsonException(stream.index, "Unterminated String");
             }
-            byte[] bytes = builder.array();
-            return new String(bytes, 0, builder.position(), StandardCharsets.UTF_8);
+            byte[] bytes = buffer.array();
+            return new String(bytes, 0, buffer.position(), StandardCharsets.UTF_8);
         } else {
             throw new JsonException(stream.index, "Expected '\"', got '" + ((char) stream.bt) + "'");
         }
     }
 
-    private static void parseHexCode(JsonStream stream, ByteBuffer buffer) throws IOException {
+    private void parseHexCode(JsonStream stream) throws IOException {
         int code = 0;
         for (var shift = 3; shift >= 0; shift--) {
             var c = stream.read();
@@ -206,6 +235,20 @@ public final class JSON {
         } else {
             throw new JsonException(stream.index - 4, "Invalid code unit sequence: " + Integer.toHexString(code));
         }
+    }
+
+    private void growBuffer(int index) {
+        if (buffer.capacity() == config.maxStringLength()) {
+            throw new JsonException(index,
+                    "Maximum string length has been reached, unable to allocate enough memory for String");
+        }
+        ByteBuffer newBuffer = ByteBuffer.allocate(Math.min(buffer.capacity() * 2, config.maxStringLength()));
+        var pos = buffer.position();
+        newBuffer.put(buffer.array(), 0, pos);
+        buffer = newBuffer;
+        buffer.position(0);
+        buffer.mark();
+        buffer.position(pos);
     }
 
     private static byte hex(int b, int index) {
