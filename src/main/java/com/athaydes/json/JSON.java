@@ -18,6 +18,10 @@ public final class JSON {
             jsonStream.read();
             return type.cast(parseString(jsonStream));
         }
+        if (type.equals(Boolean.class)) {
+            jsonStream.read();
+            return type.cast(parseBoolean(jsonStream));
+        }
         return parseObject(jsonStream, type);
     }
 

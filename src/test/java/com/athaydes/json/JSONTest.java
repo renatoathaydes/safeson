@@ -71,4 +71,10 @@ public class JSONTest {
         assertEquals("\u65e5\u672c\u8a9e\u6587\u5b57\u5217",
                 JSON.parse(example, String.class));
     }
+
+    @Test
+    public void canParseBoolean() throws Exception {
+        assertEquals(true, JSON.parse("true", Boolean.class));
+        assertEquals(false, JSON.parse("false", Boolean.class));
+    }
 }
