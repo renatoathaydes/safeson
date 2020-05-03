@@ -3,6 +3,7 @@ package com.athaydes.json;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Most international Strings copied from http://www.madore.org/~david/misc/unitest/
@@ -77,4 +78,25 @@ public class JSONTest {
         assertEquals(true, JSON.parse("true", Boolean.class));
         assertEquals(false, JSON.parse("false", Boolean.class));
     }
+
+    @Test
+    public void canParseProblemStrings() throws Exception {
+        assertEquals("A\u0000B", JSON.parse("\"A\\u0000B\"", String.class));
+
+        assertEquals("\"/\b\f\n\r\t",
+                JSON.parse("\"\\\"\\/\\b\\f\\n\\r\\t\"", String.class));
+
+        assertEquals("\\", JSON.parse("\"\\u005C\"", String.class));
+
+        // TODO support UTF-16 surrogate pairs
+        //assertEquals("\uD834\uDD1E", JSON.parse("\"\\uD834\\uDD1E\"", String.class));
+
+    }
+
+    @Test
+    public void rejectsInvalidStrings() {
+        assertThrows(JsonException.class, () -> JSON.parse("\"\\uD800\"", String.class));
+        assertThrows(JsonException.class, () -> JSON.parse("\"\\uDFFF\"", String.class));
+    }
+
 }

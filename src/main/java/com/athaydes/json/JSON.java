@@ -114,25 +114,45 @@ public final class JSON {
                     continue;
                 }
                 if (c == '"') break;
+                if (0x00 <= c && c <= 0x1f) {
+                    throw new JsonException(stream.index, "Unescaped control character (hex = " +
+                            Integer.toHexString(c) + ")");
+                }
                 if (c == '\\') {
                     c = stream.read();
                     if (c < 0) throw new JsonException(stream.index, "Unterminated String");
-                    switch (c) {
-                        case '"':
-                        case '\\':
-                        case '/':
-                        case '\b':
-                        case '\f':
-                        case '\n':
-                        case '\r':
-                        case '\t':
-                            builder.put((byte) c);
-                            break;
-                        case 'u':
-                            parseHexCode(stream, builder);
-                            break;
-                        default:
-                            throw new JsonException(stream.index, "Escaped invalid character: " + Character.toString(c));
+                    if (c == 'u') {
+                        parseHexCode(stream, builder);
+                    } else {
+                        switch (c) {
+                            case '"':
+                                builder.put((byte) '"');
+                                break;
+                            case '\\':
+                                builder.put((byte) '\\');
+                                break;
+                            case '/':
+                                builder.put((byte) '/');
+                                break;
+                            case 'b':
+                                builder.put((byte) '\b');
+                                break;
+                            case 'f':
+                                builder.put((byte) '\f');
+                                break;
+                            case 'n':
+                                builder.put((byte) '\n');
+                                break;
+                            case 'r':
+                                builder.put((byte) '\r');
+                                break;
+                            case 't':
+                                builder.put((byte) '\t');
+                                break;
+                            default:
+                                // anything may be escaped!
+                                builder.put((byte) c);
+                        }
                     }
                 } else {
                     builder.put((byte) c);
@@ -160,6 +180,12 @@ public final class JSON {
             buffer.put((byte) ((code >>> 6) | 0b1100_0000));
             buffer.put((byte) ((code & 0b0011_1111) | 0b1000_0000));
         } else if (code <= 0x0000_FFFF) {
+            // The definition of UTF-8 prohibits encoding character numbers between
+            // U+D800 and U+DFFF (https://tools.ietf.org/html/rfc3629#section-3)
+            if (0xd800 <= code && code <= 0xdfff) {
+                throw new JsonException(stream.index, "Illegal unicode sequence: " + Integer.toHexString(code));
+            }
+
             // case: 1110xxxx 10xxxxxx 10xxxxxx
             buffer.put((byte) ((code >>> 12) | 0b1110_0000));
             buffer.put((byte) (((code >>> 6) & 0b0011_1111) | 0b1000_0000));
