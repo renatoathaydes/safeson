@@ -3,12 +3,11 @@ package com.athaydes.json;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Most international Strings copied from http://www.madore.org/~david/misc/unitest/
  */
-public class JSONTest {
+public class JSONTest implements TestHelper {
     @Test
     public void canParseSimpleStrings() throws Exception {
         var example = "\"hello world\"";
@@ -95,8 +94,29 @@ public class JSONTest {
 
     @Test
     public void rejectsInvalidStrings() {
-        assertThrows(JsonException.class, () -> JSON.parse("\"\\uD800\"", String.class));
-        assertThrows(JsonException.class, () -> JSON.parse("\"\\uDFFF\"", String.class));
+        // illegal unicode characters: https://tools.ietf.org/html/rfc3629#section-3
+        assertThrowsJsonException(() -> JSON.parse("\"\\uD800\"", String.class),
+                "Illegal unicode sequence: d800", 2);
+        assertThrowsJsonException(() -> JSON.parse("\"foo \\uDFFF\"", String.class),
+                "Illegal unicode sequence: dfff", 6);
+
+        // syntax errors
+        assertThrowsJsonException(() -> JSON.parse("\"\\", String.class),
+                "Unterminated String", 1);
+        assertThrowsJsonException(() -> JSON.parse("\"\\\"", String.class),
+                "Unterminated String", 2);
+        assertThrowsJsonException(() -> JSON.parse("\"foo", String.class),
+                "Unterminated String", 3);
+        assertThrowsJsonException(() -> JSON.parse("foo", String.class),
+                "Expected '\"', got 'f'", 0);
+        assertThrowsJsonException(() -> JSON.parse("\\", String.class),
+                "Expected '\"', got '\\'", 0);
+        assertThrowsJsonException(() -> JSON.parse("\"\\uabc", String.class),
+                "Unterminated unicode sequence", 5);
+        assertThrowsJsonException(() -> JSON.parse("\"\\uabc\"", String.class),
+                "Illegal hex digit", 6);
+        assertThrowsJsonException(() -> JSON.parse("\"\\uabcx\"", String.class),
+                "Illegal hex digit", 6);
     }
 
 }

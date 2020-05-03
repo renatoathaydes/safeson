@@ -107,13 +107,17 @@ public final class JSON {
         if (stream.bt == '"') {
             var builder = ByteBuffer.allocate(4096);
             int c;
+            boolean done = false;
             while ((c = stream.read()) > 0) {
                 // if the highest bit is 1, this is not ASCII but a UTF-8 codepoint
                 if ((c & 0b1000_0000) == 0b1000_0000) {
                     builder.put((byte) c);
                     continue;
                 }
-                if (c == '"') break;
+                if (c == '"') {
+                    done = true;
+                    break;
+                }
                 if (0x00 <= c && c <= 0x1f) {
                     throw new JsonException(stream.index, "Unescaped control character (hex = " +
                             Integer.toHexString(c) + ")");
@@ -158,6 +162,9 @@ public final class JSON {
                     builder.put((byte) c);
                 }
             }
+            if (!done) {
+                throw new JsonException(stream.index, "Unterminated String");
+            }
             byte[] bytes = builder.array();
             return new String(bytes, 0, builder.position(), StandardCharsets.UTF_8);
         } else {
@@ -169,8 +176,8 @@ public final class JSON {
         int code = 0;
         for (var shift = 3; shift >= 0; shift--) {
             var c = stream.read();
-            if (c < 0) throw new RuntimeException("Unterminated unicode sequence");
-            code += (hex(c) << (4 * shift));
+            if (c < 0) throw new JsonException(stream.index, "Unterminated unicode sequence");
+            code += (hex(c, stream.index) << (4 * shift));
         }
         if (code <= 0x0000_007F) {
             // case: 0xxxxxxx
@@ -183,7 +190,7 @@ public final class JSON {
             // The definition of UTF-8 prohibits encoding character numbers between
             // U+D800 and U+DFFF (https://tools.ietf.org/html/rfc3629#section-3)
             if (0xd800 <= code && code <= 0xdfff) {
-                throw new JsonException(stream.index, "Illegal unicode sequence: " + Integer.toHexString(code));
+                throw new JsonException(stream.index - 4, "Illegal unicode sequence: " + Integer.toHexString(code));
             }
 
             // case: 1110xxxx 10xxxxxx 10xxxxxx
@@ -197,11 +204,11 @@ public final class JSON {
             buffer.put((byte) (((code >>> 6) & 0b0011_1111) | 0b1000_0000));
             buffer.put((byte) ((code & 0b0011_1111) | 0b1000_0000));
         } else {
-            throw new JsonException(stream.index, "Invalid code unit sequence: " + Integer.toHexString(code));
+            throw new JsonException(stream.index - 4, "Invalid code unit sequence: " + Integer.toHexString(code));
         }
     }
 
-    private static byte hex(int b) {
+    private static byte hex(int b, int index) {
         switch (b) {
             case '0':
                 return 0x0;
@@ -242,7 +249,7 @@ public final class JSON {
             case 'F':
                 return 0xF;
             default:
-                throw new RuntimeException("Illegal hex digit");
+                throw new JsonException(index, "Illegal hex digit");
         }
     }
 
@@ -264,7 +271,7 @@ public final class JSON {
     private static final class JsonStream extends InputStream {
         final InputStream stream;
         int bt;
-        int index;
+        int index = -1;
 
         public JsonStream(InputStream stream) {
             this.stream = stream;
