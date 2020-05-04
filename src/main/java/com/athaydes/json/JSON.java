@@ -167,23 +167,105 @@ public final class JSON {
         throw new JsonException(stream.index, "Invalid literal");
     }
 
-    private Object parseNumber(JsonStream stream) {
+    private Object parseNumber(JsonStream stream) throws IOException {
+        buffer.reset();
+        boolean isNegative;
+        long intPart = 0;
+        double fracPart = 0;
+        int expPart = 0;
         var c = stream.bt;
-        while (true) {
-            switch (c) {
-                case '0':
-                case '1':
-                case '2':
-                case '3':
-                case '4':
-                case '5':
-                case '6':
-                case '7':
-                case '8':
-                case '9':
-                    throw new RuntimeException("Number not implemented");
+        if (c == '-') {
+            isNegative = true;
+            c = stream.read();
+        } else {
+            isNegative = false;
+        }
+        if (c == '0') {
+            stream.read();
+            buffer.put((byte) 0); // use buffer to avoid error later
+        } else if ('1' <= c && c <= '9') {
+            intPart = parseLong(stream);
+        } else {
+            throw new JsonException(stream.index, "Invalid literal");
+        }
+        if (stream.bt == '.') {
+            c = stream.read();
+            if ('0' <= c && c <= '9') {
+                fracPart = parseFraction(stream);
+            } else if (c < 0) {
+                throw new JsonException(stream.index, "Unterminated number");
+            } else {
+                throw new JsonException(stream.index, "Invalid literal");
             }
         }
+        c = stream.bt;
+        if (c == 'e' || c == 'E') {
+            var isExpNegative = false;
+            c = stream.read();
+            if (c == '-' || c == '+') {
+                isExpNegative = (c == '-');
+                c = stream.read();
+            }
+            if ('0' <= c && c <= '9') {
+                expPart = Math.toIntExact(parseLong(stream));
+                if (isExpNegative) {
+                    expPart = expPart * -1;
+                }
+            } else if (c < 0) {
+                throw new JsonException(stream.index, "Unterminated number");
+            } else {
+                throw new JsonException(stream.index, "Invalid literal");
+            }
+        }
+        // at least one byte should have been put into the buffer, otherwise we parsed no input at all
+        if (buffer.position() == 0) {
+            throw new JsonException(stream.index, "Invalid literal");
+        }
+        if (isNegative) {
+            intPart = intPart * -1;
+            fracPart = fracPart * -1.0;
+        }
+        if (fracPart == 0L && expPart == 0) {
+            if (intPart < Integer.MAX_VALUE) {
+                return (int) intPart;
+            }
+            return intPart;
+        } else {
+            var mult = Math.pow(10, expPart);
+            // the order of the operations matters! Sum last to avoid precision being lost.
+            return intPart * mult + fracPart * mult;
+        }
+    }
+
+    private long parseLong(JsonStream stream) throws IOException {
+        buffer.reset();
+        // assume the first digit has been checked
+        buffer.put((byte) (stream.bt - 48));
+        int c;
+        while ((c = stream.read()) > 0 && '0' <= c && c <= '9') {
+            buffer.put((byte) (c - 48));
+        }
+        final var pos = buffer.position();
+        long result = 0;
+        for (var i = 0; i < pos; i++) {
+            long b = buffer.get(i);
+            result += b * ((long) Math.pow(10, pos - i - 1));
+        }
+        return result;
+    }
+
+    private static double parseFraction(JsonStream stream) throws IOException {
+        var result = 0d;
+        var c = stream.bt - 48;
+        for (int i = -1; 0 <= c && c <= 9; i--) {
+            result += c * Math.pow(10, i);
+            var b = stream.read();
+            if (b < 0) {
+                break;
+            }
+            c = b - 48;
+        }
+        return result;
     }
 
     private String parseString(JsonStream stream) throws IOException {
