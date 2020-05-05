@@ -6,7 +6,9 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public final class JSON {
 
@@ -51,6 +53,8 @@ public final class JSON {
                 result = type.cast(probeTypeThenParse(jsonStream, 0));
             } else if (type.equals(Void.class)) {
                 result = type.cast(parseNull(jsonStream));
+            } else if (type.equals(Map.class)) {
+                result = type.cast(parseObjectToMap(jsonStream, 0));
             } else {
                 result = parseObject(jsonStream, type, 0);
             }
@@ -75,7 +79,7 @@ public final class JSON {
             case 'n':
                 return parseNull(stream);
             case '{':
-                return parseObject(stream, JsonType.OBJECT.getJavaType(), recursionLevel + 1);
+                return parseObjectToMap(stream, recursionLevel + 1);
             case '[':
                 return parseArray(stream, recursionLevel + 1);
             case '-':
@@ -92,6 +96,59 @@ public final class JSON {
                 return parseNumber(stream);
         }
         throw new JsonException(stream.index, "Invalid literal");
+    }
+
+    private Map<String, Object> parseObjectToMap(JsonStream stream, int recursionLevel) throws Exception {
+        if (stream.bt != '{') {
+            throw new JsonException(stream.index, "Expected object but got '" + ((char) stream.bt) + "'");
+        }
+        if (recursionLevel >= config.maxRecursionDepth()) {
+            throw new JsonException(stream.index, "Recursion limit breached");
+        }
+        skipWhitespace(stream);
+        int c = stream.bt;
+        Map<String, Object> result = new LinkedHashMap<>();
+        if (c == '}') {
+            stream.read();
+            return result;
+        }
+        while (c > 0) {
+            var key = parseString(stream);
+            c = stream.bt;
+            if (isWhitespace(c)) {
+                skipWhitespace(stream);
+                c = stream.bt;
+            }
+            if (c == ':') {
+                skipWhitespace(stream);
+                c = stream.bt;
+            } else if (c < 0) {
+                break;
+            } else {
+                throw new JsonException(stream.index, "Expected ':' or '}', got '" + ((char) c) + "'");
+            }
+            if (c < 0) {
+                break;
+            }
+            result.put(key, probeTypeThenParse(stream, recursionLevel));
+            c = stream.bt;
+            if (isWhitespace(c)) {
+                skipWhitespace(stream);
+                c = stream.bt;
+            }
+            if (c == ',') {
+                skipWhitespace(stream);
+                c = stream.bt;
+            } else if (c == '}') {
+                stream.read();
+                return result;
+            } else if (c < 0) {
+                break;
+            } else {
+                throw new JsonException(stream.index, "Expected ',' or '}', got '" + ((char) c) + "'");
+            }
+        }
+        throw new JsonException(stream.index, "Unterminated object");
     }
 
     private <T> T parseObject(JsonStream stream, Class<T> type, int recursionLevel) throws Exception {
