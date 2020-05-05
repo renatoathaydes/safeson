@@ -131,7 +131,9 @@ public final class JSON {
     }
 
     private List<Object> parseArray(JsonStream stream) throws Exception {
-        // assume the current char is '['
+        if (stream.bt != '[') {
+            throw new JsonException(stream.index, "Expected array but got '" + ((char) stream.bt) + "'");
+        }
         skipWhitespace(stream);
         int c = stream.bt;
         var result = new ArrayList<>();
@@ -148,9 +150,12 @@ public final class JSON {
             }
             if (c == ',') {
                 skipWhitespace(stream);
+                c = stream.bt;
             } else if (c == ']') {
                 stream.read();
                 return result;
+            } else if (c < 0) {
+                break;
             } else {
                 throw new JsonException(stream.index, "Expected ',' or ']', got '" + ((char) c) + "'");
             }
@@ -472,14 +477,16 @@ public final class JSON {
     }
 
     private void verifyNoTrailingContent(JsonStream jsonStream) throws IOException {
-        skipWhitespace(jsonStream);
+        if (isWhitespace(jsonStream.bt)) {
+            skipWhitespace(jsonStream);
+        }
         if (jsonStream.bt >= 0) {
-            throw new JsonException(jsonStream.index, "Illegal trailing content");
+            throw new JsonException(jsonStream.index, "Illegal trailing content: '" + ((char) jsonStream.bt) + "'");
         }
     }
 
     private void skipWhitespace(JsonStream stream) throws IOException {
-        var index = 0;
+        var index = isWhitespace(stream.bt) ? 1 : 0;
         final var maxIndex = config.maxWhitespace();
         int b;
         while ((b = stream.read()) > 0) {
