@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 public final class JSON {
@@ -97,6 +98,7 @@ public final class JSON {
     private <T> T parseObject(JsonStream stream, Class<T> type) throws Exception {
         int b;
         T result = type.getDeclaredConstructor().newInstance();
+        // FIXME start from current stream.bt
         while ((b = stream.read()) > 0) {
             switch (b) {
                 case '{':
@@ -107,7 +109,8 @@ public final class JSON {
                         var fType = field.getType();
                         skipWhitespace(stream);
                         if (stream.bt != ':') {
-                            throw new RuntimeException();
+                            throw new JsonException(stream.index, "Expected key-value separator ':', got '" +
+                                    ((char) stream.bt) + "'");
                         }
                         skipWhitespace(stream);
                         if (Number.class.isAssignableFrom(fType)) {
@@ -120,14 +123,39 @@ public final class JSON {
                         skipWhitespace(stream);
                     }
                 default:
-                    throw new RuntimeException("Invalid JSON");
+                    throw new JsonException(stream.index, "Expected object starting character '{', got '" +
+                            ((char) stream.bt) + "'");
             }
         }
         return result;
     }
 
-    private List<?> parseArray(JsonStream stream) {
-        throw new UnsupportedOperationException("parseArray");
+    private List<Object> parseArray(JsonStream stream) throws Exception {
+        // assume the current char is '['
+        skipWhitespace(stream);
+        int c = stream.bt;
+        var result = new ArrayList<>();
+        if (c == ']') {
+            stream.read();
+            return result;
+        }
+        while (c > 0) {
+            result.add(probeTypeThenParse(stream));
+            c = stream.bt;
+            if (isWhitespace(c)) {
+                skipWhitespace(stream);
+                c = stream.bt;
+            }
+            if (c == ',') {
+                skipWhitespace(stream);
+            } else if (c == ']') {
+                stream.read();
+                return result;
+            } else {
+                throw new JsonException(stream.index, "Expected ',' or ']', got '" + ((char) c) + "'");
+            }
+        }
+        throw new JsonException(stream.index, "Unterminated array");
     }
 
     private Void parseNull(JsonStream stream) throws IOException {
@@ -135,6 +163,7 @@ public final class JSON {
             if (stream.read() == 'u') {
                 if (stream.read() == 'l') {
                     if (stream.read() == 'l') {
+                        stream.read();
                         return null;
                     }
                 }
@@ -149,6 +178,7 @@ public final class JSON {
                 if (stream.read() == 'r') {
                     if (stream.read() == 'u') {
                         if (stream.read() == 'e') {
+                            stream.read();
                             return Boolean.TRUE;
                         }
                     }
@@ -158,6 +188,7 @@ public final class JSON {
                     if (stream.read() == 'l') {
                         if (stream.read() == 's') {
                             if (stream.read() == 'e') {
+                                stream.read();
                                 return Boolean.FALSE;
                             }
                         }
@@ -288,6 +319,7 @@ public final class JSON {
                 }
                 if (c == '"') {
                     done = true;
+                    stream.read();
                     break;
                 }
                 if (0x00 <= c && c <= 0x1f) {
@@ -450,22 +482,20 @@ public final class JSON {
         var index = 0;
         final var maxIndex = config.maxWhitespace();
         int b;
-        loop:
         while ((b = stream.read()) > 0) {
-            switch (b) {
-                case ' ':
-                case '\t':
-                case '\n':
-                case '\r':
-                    if (index >= maxIndex) {
-                        throw new JsonException(stream.index, "Too much whitespace");
-                    }
-                    index++;
-                    break;
-                default:
-                    break loop;
+            if (isWhitespace(b)) {
+                if (index >= maxIndex) {
+                    throw new JsonException(stream.index, "Too much whitespace");
+                }
+                index++;
+            } else {
+                break;
             }
         }
+    }
+
+    private static boolean isWhitespace(int c) {
+        return c == ' ' || c == '\t' || c == '\n' || c == '\r';
     }
 
     private static final class JsonStream extends InputStream {
