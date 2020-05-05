@@ -45,15 +45,15 @@ public final class JSON {
             } else if (type.equals(Boolean.class)) {
                 result = type.cast(parseBoolean(jsonStream));
             } else if (type.equals(List.class)) {
-                result = type.cast(parseArray(jsonStream));
+                result = type.cast(parseArray(jsonStream, 0));
             } else if (Number.class.isAssignableFrom(type)) {
                 result = type.cast(parseNumber(jsonStream));
             } else if (type.equals(Object.class)) {
-                result = type.cast(probeTypeThenParse(jsonStream));
+                result = type.cast(probeTypeThenParse(jsonStream, 0));
             } else if (type.equals(Void.class)) {
                 result = type.cast(parseNull(jsonStream));
             } else {
-                result = parseObject(jsonStream, type);
+                result = parseObject(jsonStream, type, 0);
             }
             if (config.shouldConsumeTrailingContent()) {
                 verifyNoTrailingContent(jsonStream);
@@ -66,7 +66,7 @@ public final class JSON {
         }
     }
 
-    private Object probeTypeThenParse(JsonStream stream) throws Exception {
+    private Object probeTypeThenParse(JsonStream stream, int recursionLevel) throws Exception {
         switch (stream.bt) {
             case '"':
                 return parseString(stream);
@@ -76,9 +76,9 @@ public final class JSON {
             case 'n':
                 return parseNull(stream);
             case '{':
-                return parseObject(stream, JsonType.OBJECT.getJavaType());
+                return parseObject(stream, JsonType.OBJECT.getJavaType(), recursionLevel + 1);
             case '[':
-                return parseArray(stream);
+                return parseArray(stream, recursionLevel + 1);
             case '-':
             case '0':
             case '1':
@@ -95,7 +95,7 @@ public final class JSON {
         throw new JsonException(stream.index, "Invalid literal");
     }
 
-    private <T> T parseObject(JsonStream stream, Class<T> type) throws Exception {
+    private <T> T parseObject(JsonStream stream, Class<T> type, int recursionLevel) throws Exception {
         int b;
         T result = type.getDeclaredConstructor().newInstance();
         // FIXME start from current stream.bt
@@ -130,9 +130,12 @@ public final class JSON {
         return result;
     }
 
-    private List<Object> parseArray(JsonStream stream) throws Exception {
+    private List<Object> parseArray(JsonStream stream, int recursionLevel) throws Exception {
         if (stream.bt != '[') {
             throw new JsonException(stream.index, "Expected array but got '" + ((char) stream.bt) + "'");
+        }
+        if (recursionLevel >= config.maxRecursionDepth()) {
+            throw new JsonException(stream.index, "Recursion limit breached");
         }
         skipWhitespace(stream);
         int c = stream.bt;
@@ -142,7 +145,7 @@ public final class JSON {
             return result;
         }
         while (c > 0) {
-            result.add(probeTypeThenParse(stream));
+            result.add(probeTypeThenParse(stream, recursionLevel));
             c = stream.bt;
             if (isWhitespace(c)) {
                 skipWhitespace(stream);

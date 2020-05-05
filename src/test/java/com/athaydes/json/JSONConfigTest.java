@@ -2,6 +2,7 @@ package com.athaydes.json;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -41,5 +42,13 @@ public class JSONConfigTest implements TestHelper {
                 "Too much whitespace", 4);
         assertThrowsJsonException(() -> json.parse("   \"foo\"     ", String.class),
                 "Too much whitespace", 12);
+    }
+
+    @Test
+    public void maxRecursion() {
+        var json = new JSON(new JsonConfig(16, 4, 4, true));
+        assertEquals(List.of(List.of(List.of(List.of()))), json.parse("[[[[]]]]", List.class));
+
+        assertThrowsJsonException(() -> json.parse("[[[[[", List.class), "Recursion limit breached", 4);
     }
 }
