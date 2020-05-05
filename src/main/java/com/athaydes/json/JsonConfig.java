@@ -8,8 +8,12 @@ public final class JsonConfig {
     private final int maxWhitespace;
     private final boolean consumeTrailingContent;
 
-    public JsonConfig(int maxStringLength, int maxRecursionDepth, int maxWhitespace,
-                      boolean consumeTrailingContent) {
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    private JsonConfig(int maxStringLength, int maxRecursionDepth, int maxWhitespace,
+                       boolean consumeTrailingContent) {
         if (maxStringLength < 16) {
             throw new IllegalArgumentException("maxStringLength must be 16 or greater");
         }
@@ -39,5 +43,36 @@ public final class JsonConfig {
 
     public boolean shouldConsumeTrailingContent() {
         return consumeTrailingContent;
+    }
+
+    public static final class Builder {
+        private int maxStringLength = DEFAULT.maxStringLength;
+        private int maxRecursionDepth = DEFAULT.maxRecursionDepth;
+        private int maxWhitespace = DEFAULT.maxWhitespace;
+        private boolean consumeTrailingContent = DEFAULT.consumeTrailingContent;
+
+        public Builder withMaxStringLength(int maxStringLength) {
+            this.maxStringLength = maxStringLength;
+            return this;
+        }
+
+        public Builder withMaxRecursionDepth(int maxRecursionDepth) {
+            this.maxRecursionDepth = maxRecursionDepth;
+            return this;
+        }
+
+        public Builder withMaxWhitespace(int maxWhitespace) {
+            this.maxWhitespace = maxWhitespace;
+            return this;
+        }
+
+        public Builder withConsumeTrailingContent(boolean consumeTrailingContent) {
+            this.consumeTrailingContent = consumeTrailingContent;
+            return this;
+        }
+
+        JsonConfig build() {
+            return new JsonConfig(maxStringLength, maxRecursionDepth, maxWhitespace, consumeTrailingContent);
+        }
     }
 }

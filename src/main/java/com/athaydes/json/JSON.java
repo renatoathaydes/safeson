@@ -14,7 +14,6 @@ public final class JSON {
 
     private ByteBuffer buffer;
 
-
     public JSON() {
         this(JsonConfig.DEFAULT);
     }

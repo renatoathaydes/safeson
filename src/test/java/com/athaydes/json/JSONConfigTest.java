@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class JSONConfigTest implements TestHelper {
     @Test
     void stringBufferCapacity() {
-        var json = new JSON(new JsonConfig(4096, 4, 4, true));
+        var json = new JSON(JsonConfig.builder().withMaxStringLength(4096).build());
 
         // grows once
         var txt = IntStream.range(0, 1025).map((i) -> 1).mapToObj(Integer::toString).collect(Collectors.joining());
@@ -34,7 +34,7 @@ public class JSONConfigTest implements TestHelper {
 
     @Test
     public void maxWhitespace() {
-        var json = new JSON(new JsonConfig(4096, 4, 4, true));
+        var json = new JSON(JsonConfig.builder().withMaxWhitespace(4).build());
         assertEquals("foo", json.parse("    \"foo\"", String.class));
         assertEquals("foo", json.parse("    \"foo\"    ", String.class));
 
@@ -46,7 +46,7 @@ public class JSONConfigTest implements TestHelper {
 
     @Test
     public void maxRecursion() {
-        var json = new JSON(new JsonConfig(16, 4, 4, true));
+        var json = new JSON(JsonConfig.builder().withMaxRecursionDepth(4).build());
         assertEquals(List.of(List.of(List.of(List.of()))), json.parse("[[[[]]]]", List.class));
 
         assertThrowsJsonException(() -> json.parse("[[[[[", List.class), "Recursion limit breached", 4);
