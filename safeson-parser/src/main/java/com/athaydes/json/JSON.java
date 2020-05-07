@@ -378,6 +378,10 @@ public final class JSON {
                 }
                 // if the highest bit is 1, this is not ASCII but a UTF-8 codepoint
                 if ((c & 0b1000_0000) == 0b1000_0000) {
+                    // except for the illegal FF
+                    if (c == 0xff) {
+                        throw new JsonException(stream.index, "Illegal codepoint: " + Integer.toHexString(c));
+                    }
                     buffer.put((byte) c);
                     continue;
                 }

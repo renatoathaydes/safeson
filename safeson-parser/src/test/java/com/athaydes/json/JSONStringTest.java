@@ -2,6 +2,8 @@ package com.athaydes.json;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayInputStream;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -104,6 +106,10 @@ public class JSONStringTest implements TestHelper {
                 "Invalid code unit sequence: dead", 2);
         assertThrowsJsonException(() -> json.parse("\"\\UA66D\"", String.class),
                 "Illegal escaped character: U", 2);
+
+        var bytes = new ByteArrayInputStream(new byte[]{'"', (byte) 0xff, '"'});
+        assertThrowsJsonException(() -> json.parse(bytes, String.class),
+                "Illegal codepoint: ff", 1);
 
         // syntax errors
         assertThrowsJsonException(() -> json.parse("\"\\", String.class),
