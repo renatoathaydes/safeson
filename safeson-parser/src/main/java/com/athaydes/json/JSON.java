@@ -441,12 +441,7 @@ public final class JSON {
     }
 
     private void parseHexCode(JsonStream stream) throws IOException {
-        int code = 0;
-        for (var shift = 3; shift >= 0; shift--) {
-            var c = stream.read();
-            if (c < 0) throw new JsonException(stream.index, "Unterminated unicode sequence");
-            code += (hex(c, stream.index) << (4 * shift));
-        }
+        int code = readHexCode(stream);
         if (code <= 0x0000_007F) {
             // case: 0xxxxxxx
             buffer.put((byte) code);
@@ -458,13 +453,14 @@ public final class JSON {
             // The definition of UTF-8 prohibits encoding character numbers between
             // U+D800 and U+DFFF (https://tools.ietf.org/html/rfc3629#section-3)
             if (0xd800 <= code && code <= 0xdfff) {
-                throw new JsonException(stream.index - 4, "Illegal unicode sequence: " + Integer.toHexString(code));
+                // but the JSON spec allows UTF-16 surrogate pairs, so check for that!
+                tryReadUtf16Surrogate(stream, code);
+            } else {
+                // case: 1110xxxx 10xxxxxx 10xxxxxx
+                buffer.put((byte) ((code >>> 12) | 0b1110_0000));
+                buffer.put((byte) (((code >>> 6) & 0b0011_1111) | 0b1000_0000));
+                buffer.put((byte) ((code & 0b0011_1111) | 0b1000_0000));
             }
-
-            // case: 1110xxxx 10xxxxxx 10xxxxxx
-            buffer.put((byte) ((code >>> 12) | 0b1110_0000));
-            buffer.put((byte) (((code >>> 6) & 0b0011_1111) | 0b1000_0000));
-            buffer.put((byte) ((code & 0b0011_1111) | 0b1000_0000));
         } else if (code <= 0x0010_FFFF) {
             // case: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
             buffer.put((byte) ((code >>> 18) | 0b1111_0000));
@@ -473,6 +469,52 @@ public final class JSON {
             buffer.put((byte) ((code & 0b0011_1111) | 0b1000_0000));
         } else {
             throw new JsonException(stream.index - 4, "Invalid code unit sequence: " + Integer.toHexString(code));
+        }
+    }
+
+    private void tryReadUtf16Surrogate(JsonStream stream, int highSurrogate) throws IOException {
+        // https://tools.ietf.org/html/rfc8259#section-7
+        // To escape an extended character that is not in the Basic Multilingual
+        // Plane, the character is represented as a 12-character sequence,
+        // encoding the UTF-16 surrogate pair.
+
+        // UTF-16 RFC: https://tools.ietf.org/html/rfc2781#section-2
+        // Characters with values between 0x10000 and 0x10FFFF are
+        // represented by a 16-bit integer with a value between 0xD800 and 0xDBFF (...)
+        // followed by a 16-bit integer with a value between 0xDC00 and 0xDFFF (...)
+        int code;
+        if (0xd800 <= highSurrogate && highSurrogate <= 0xdbff) {
+            code = highSurrogate & 0b1111111111;
+        } else {
+            throw new JsonException(stream.index - 4, "Invalid code unit sequence: " + Integer.toHexString(highSurrogate));
+        }
+
+        // read the low-surrogate unicode sequence
+        var c = stream.read();
+        if (c == '\\') {
+            c = stream.read();
+            if (c == 'u') {
+                c = readHexCode(stream);
+            } else {
+                throw new JsonException(stream.index, "Invalid UTF-16 low-surrogate pair");
+            }
+        } else {
+            throw new JsonException(stream.index, "Invalid UTF-16 low-surrogate pair");
+        }
+        if (0xdc00 <= c && c <= 0xdfff) {
+            // surrogate-pair accepted, decode the UTF-16 bytes.
+            // See https://tools.ietf.org/html/rfc2781#section-2.2
+            var lowSurrogate = c & 0b1111111111;
+            code = ((code << 10) | lowSurrogate) + 0x10000;
+
+            // now encode it as UTF-8...
+            // UTF8 case:  11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+            buffer.put((byte) ((code >>> 18) | 0b1111_0000));
+            buffer.put((byte) (((code >>> 12) & 0b0011_1111) | 0b1000_0000));
+            buffer.put((byte) (((code >>> 6) & 0b0011_1111) | 0b1000_0000));
+            buffer.put((byte) ((code & 0b0011_1111) | 0b1000_0000));
+        } else {
+            throw new JsonException(stream.index - 4, "Illegal UTF-16 lower surrogate pair: " + Integer.toHexString(code));
         }
     }
 
@@ -488,6 +530,16 @@ public final class JSON {
         buffer.position(0);
         buffer.mark();
         buffer.position(pos);
+    }
+
+    private static int readHexCode(JsonStream stream) throws IOException {
+        int code = 0;
+        for (var shift = 3; shift >= 0; shift--) {
+            var c = stream.read();
+            if (c < 0) throw new JsonException(stream.index, "Unterminated unicode sequence");
+            code += (hex(c, stream.index) << (4 * shift));
+        }
+        return code;
     }
 
     private static byte hex(int b, int index) {

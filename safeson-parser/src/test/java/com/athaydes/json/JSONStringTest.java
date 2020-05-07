@@ -90,18 +90,16 @@ public class JSONStringTest implements TestHelper {
 
         assertEquals("\\", json.parse("\"\\u005C\"", String.class));
 
-        // TODO support UTF-16 surrogate pairs
-        //assertEquals("\uD834\uDD1E", json.parse("\"\\uD834\\uDD1E\"", String.class));
-
+        assertEquals("\uD834\uDD1E", json.parse("\"\\uD834\\uDD1E\"", String.class));
     }
 
     @Test
     public void rejectsInvalidStrings() {
         // illegal unicode characters: https://tools.ietf.org/html/rfc3629#section-3
         assertThrowsJsonException(() -> json.parse("\"\\uD800\"", String.class),
-                "Illegal unicode sequence: d800", 2);
+                "Invalid UTF-16 low-surrogate pair", 7);
         assertThrowsJsonException(() -> json.parse("\"foo \\uDFFF\"", String.class),
-                "Illegal unicode sequence: dfff", 6);
+                "Invalid code unit sequence: dfff", 6);
 
         // syntax errors
         assertThrowsJsonException(() -> json.parse("\"\\", String.class),
