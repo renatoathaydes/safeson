@@ -422,8 +422,7 @@ public final class JSON {
                                 buffer.put((byte) '\t');
                                 break;
                             default:
-                                // anything may be escaped!
-                                buffer.put((byte) c);
+                                throw new JsonException(stream.index, "Illegal escaped character: " + ((char) c));
                         }
                     }
                 } else {

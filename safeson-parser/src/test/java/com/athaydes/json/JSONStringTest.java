@@ -100,6 +100,10 @@ public class JSONStringTest implements TestHelper {
                 "Invalid UTF-16 low-surrogate pair", 7);
         assertThrowsJsonException(() -> json.parse("\"foo \\uDFFF\"", String.class),
                 "Invalid code unit sequence: dfff", 6);
+        assertThrowsJsonException(() -> json.parse("\"\\uDEAD\"", String.class),
+                "Invalid code unit sequence: dead", 2);
+        assertThrowsJsonException(() -> json.parse("\"\\UA66D\"", String.class),
+                "Illegal escaped character: U", 2);
 
         // syntax errors
         assertThrowsJsonException(() -> json.parse("\"\\", String.class),
