@@ -1,19 +1,22 @@
 package com.athaydes.json;
 
+import java.util.Objects;
+
 public final class JsonConfig {
-    public static final JsonConfig DEFAULT = new JsonConfig(1024 * 1000, 512, 128, true);
+    public static final JsonConfig DEFAULT = new JsonConfig(1024 * 1000, 512, 128, true, DuplicateKeyStrategy.FAIL);
 
     private final int maxStringLength;
     private final int maxRecursionDepth;
     private final int maxWhitespace;
     private final boolean consumeTrailingContent;
+    private final DuplicateKeyStrategy duplicateKeyStrategy;
 
     public static Builder builder() {
         return new Builder();
     }
 
     private JsonConfig(int maxStringLength, int maxRecursionDepth, int maxWhitespace,
-                       boolean consumeTrailingContent) {
+                       boolean consumeTrailingContent, DuplicateKeyStrategy duplicateKeyStrategy) {
         if (maxStringLength < 16) {
             throw new IllegalArgumentException("maxStringLength must be 16 or greater");
         }
@@ -27,6 +30,7 @@ public final class JsonConfig {
         this.maxRecursionDepth = maxRecursionDepth;
         this.maxWhitespace = maxWhitespace;
         this.consumeTrailingContent = consumeTrailingContent;
+        this.duplicateKeyStrategy = duplicateKeyStrategy;
     }
 
     public int maxStringLength() {
@@ -45,11 +49,20 @@ public final class JsonConfig {
         return consumeTrailingContent;
     }
 
+    public DuplicateKeyStrategy duplicateKeyStrategy() {
+        return duplicateKeyStrategy;
+    }
+
+    MapUpdater mapUpdater() {
+        return duplicateKeyStrategy.getMapUpdater();
+    }
+
     public static final class Builder {
         private int maxStringLength = DEFAULT.maxStringLength;
         private int maxRecursionDepth = DEFAULT.maxRecursionDepth;
         private int maxWhitespace = DEFAULT.maxWhitespace;
         private boolean consumeTrailingContent = DEFAULT.consumeTrailingContent;
+        private DuplicateKeyStrategy duplicateKeyStrategy = DEFAULT.duplicateKeyStrategy;
 
         public Builder withMaxStringLength(int maxStringLength) {
             this.maxStringLength = maxStringLength;
@@ -71,8 +84,14 @@ public final class JsonConfig {
             return this;
         }
 
+        public Builder withDuplicateKeyStrategy(DuplicateKeyStrategy duplicateKeyStrategy) {
+            this.duplicateKeyStrategy = Objects.requireNonNull(duplicateKeyStrategy);
+            return this;
+        }
+
         JsonConfig build() {
-            return new JsonConfig(maxStringLength, maxRecursionDepth, maxWhitespace, consumeTrailingContent);
+            return new JsonConfig(maxStringLength, maxRecursionDepth, maxWhitespace,
+                    consumeTrailingContent, duplicateKeyStrategy);
         }
     }
 }

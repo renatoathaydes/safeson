@@ -71,4 +71,24 @@ public class JSONConfigTest implements TestHelper {
         assertEquals(null, json.parse(bytes));
         assertEquals(0, json.parse(bytes));
     }
+
+    @Test
+    void keepObjectFirstKey() {
+        var json = new JSON(JsonConfig.builder().withDuplicateKeyStrategy(DuplicateKeyStrategy.KEEP_FIRST).build());
+        assertEquals(Map.of("a", 1, "b", 2), json.parse("{\"a\": 1,\"b\": 2,\"a\": 2,\"b\": 3}"));
+    }
+
+    @Test
+    void keepObjectLastKey() {
+        var json = new JSON(JsonConfig.builder().withDuplicateKeyStrategy(DuplicateKeyStrategy.KEEP_LAST).build());
+        assertEquals(Map.of("a", 2, "b", 3), json.parse("{\"a\": 1,\"b\": 2,\"a\": 2,\"b\": 3}"));
+    }
+
+    @Test
+    void failDuplicateKeys() {
+        var json = new JSON(JsonConfig.builder().withDuplicateKeyStrategy(DuplicateKeyStrategy.FAIL).build());
+        assertThrowsJsonException(() -> json.parse("{\"a\": 1,\"b\": 2,\"a\": 2,\"b\": 3}"),
+                "Duplicate key: a", 15);
+    }
+
 }

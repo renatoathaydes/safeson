@@ -116,7 +116,9 @@ public final class JSON {
             stream.read();
             return result;
         }
+        var mapUpdater = config.mapUpdater();
         while (c > 0) {
+            var keyIndex = stream.index;
             var key = parseString(stream);
             c = stream.bt;
             if (isWhitespace(c)) {
@@ -134,7 +136,10 @@ public final class JSON {
             if (c < 0) {
                 break;
             }
-            result.put(key, probeTypeThenParse(stream, recursionLevel));
+            var ok = mapUpdater.updateMap(result, key, probeTypeThenParse(stream, recursionLevel));
+            if (!ok) {
+                throw new JsonException(keyIndex, "Duplicate key: " + key);
+            }
             c = stream.bt;
             if (isWhitespace(c)) {
                 skipWhitespace(stream);
