@@ -2,6 +2,7 @@ package com.athaydes.json;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +21,10 @@ public class JSONObjectTest implements TestHelper {
 
     @Test
     void canParseObjects() {
+        assertEquals(Map.of("", ""), json.parse("{\"\":\"\"}", Map.class));
+        assertEquals(new HashMap<String, Object>() {{
+            put("", null);
+        }}, json.parse("{\"\": null}", Map.class));
         assertEquals(Map.of("one", 1), json.parse("{\"one\": 1}", Map.class));
         assertEquals(Map.of("two", 2), json.parse("{\"two\": 2}", Map.class));
         assertEquals(Map.of("one", 1, "two", 2), json.parse("{\"one\": 1, \"two\": 2}", Map.class));
@@ -76,5 +81,25 @@ public class JSONObjectTest implements TestHelper {
                         )
                 )
         ), json.parse(example, Map.class));
+    }
+
+    @Test
+    void rejectInvalidObjects() {
+        assertThrowsJsonException(() -> json.parse("{", Map.class), "Unterminated object", 0);
+        assertThrowsJsonException(() -> json.parse("{{", Map.class), "Expected '\"', got '{'", 1);
+        assertThrowsJsonException(() -> json.parse("{\"\" ", Map.class), "Unterminated object", 3);
+        assertThrowsJsonException(() -> json.parse("{1,", Map.class), "Expected '\"', got '1'", 1);
+        assertThrowsJsonException(() -> json.parse("{1}", Map.class), "Expected '\"', got '1'", 1);
+        assertThrowsJsonException(() -> json.parse("{\"\", }", Map.class), "Expected ':' or '}', got ','", 3);
+        assertThrowsJsonException(() -> json.parse("{\"\":3,,", Map.class), "Expected '\"', got ','", 6);
+        assertThrowsJsonException(() -> json.parse("}", Map.class), "Expected object but got '}'", 0);
+        assertThrowsJsonException(() -> json.parse(" }", Map.class), "Expected object but got '}'", 1);
+        assertThrowsJsonException(() -> json.parse("{}}", Map.class), "Illegal trailing content: '}'", 2);
+        assertThrowsJsonException(() -> json.parse("{:}", Map.class), "Expected '\"', got ':'", 1);
+        assertThrowsJsonException(() -> json.parse("{\"\":{\"\":{}", Map.class), "Unterminated object", 9);
+        assertThrowsJsonException(() -> json.parse("{\"\":{\"\":{}}", Map.class), "Unterminated object", 10);
+
+        // by default, duplicate keys should be disallowed
+        assertThrowsJsonException(() -> json.parse("{\"abc\":1,\"abc\":2}", Map.class), "Duplicate key: abc", 9);
     }
 }
