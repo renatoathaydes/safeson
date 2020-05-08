@@ -3,6 +3,7 @@ package com.athaydes.json;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -34,6 +35,12 @@ public class JSONArrayTest implements TestHelper {
         assertEquals(List.of("foo", "bar"), json.parse("[\"foo\", \"bar\"]", List.class));
         assertEquals(List.of("[1,2,3]", "4", "[5,6]"), json.parse("[\"[1,2,3]\" ,  \"4\", \"[5,6]\"  ]", List.class));
         assertEquals(List.of("{}", "\u0048", "1e+9"), json.parse("[ \"{}\", \"\\u0048\"  ,\"1e+9\"]", List.class));
+    }
+
+    @Test
+    public void canParseMultiTypeArrays() {
+        assertEquals(List.of("foo", 1, true, false, 0.4, Map.of("six", 6)),
+                json.parse("[\"foo\", 1, true, false, 0.4, {\"six\": 6}]", List.class));
     }
 
     @Test
