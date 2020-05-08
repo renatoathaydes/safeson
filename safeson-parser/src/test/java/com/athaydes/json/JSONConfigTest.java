@@ -2,7 +2,10 @@ package com.athaydes.json;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -50,5 +53,22 @@ public class JSONConfigTest implements TestHelper {
         assertEquals(List.of(List.of(List.of(List.of()))), json.parse("[[[[]]]]", List.class));
 
         assertThrowsJsonException(() -> json.parse("[[[[[", List.class), "Recursion limit breached", 4);
+    }
+
+    @Test
+    public void concatenatedContents() {
+        var json = new JSON(JsonConfig.builder().withConsumeTrailingContent(false).build());
+        var documents = "123:{\"foo\": true};[1,2,3];\"bar\"; 0.43: true: false:   null: 0 ";
+        var bytes = new ByteArrayInputStream(documents.getBytes(StandardCharsets.UTF_8));
+
+        assertEquals(123, json.parse(bytes));
+        assertEquals(Map.of("foo", true), json.parse(bytes));
+        assertEquals(List.of(1, 2, 3), json.parse(bytes));
+        assertEquals("bar", json.parse(bytes));
+        assertEquals(0.43, (double) json.parse(bytes), 1e-12);
+        assertEquals(true, json.parse(bytes));
+        assertEquals(false, json.parse(bytes));
+        assertEquals(null, json.parse(bytes));
+        assertEquals(0, json.parse(bytes));
     }
 }
