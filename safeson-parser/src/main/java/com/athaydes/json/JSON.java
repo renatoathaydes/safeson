@@ -36,6 +36,10 @@ public final class JSON {
         return parse(stream, type);
     }
 
+    public Object parse(InputStream stream) {
+        return parse(stream, Object.class);
+    }
+
     public <T> T parse(InputStream stream, Class<T> type) {
         var jsonStream = new JsonStream(stream);
         try {
