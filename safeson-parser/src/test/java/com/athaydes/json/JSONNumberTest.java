@@ -69,6 +69,7 @@ public class JSONNumberTest implements TestHelper {
         assertEquals(10.5623D, json.parse("10.5623", Number.class));
         assertEquals(99.99999999999D, json.parse("99.99999999999", Number.class));
         assertEquals(123456789.123456789D, json.parse("123456789.123456789", Number.class));
+        assertEquals(1234567890123456789.1234567890123D, json.parse("1234567890123456789.1234567890123", Number.class));
 
         assertEquals(0, json.parse("0.0e0", Number.class));
         assertEquals(100.0, json.parse("10.0e1", Number.class));

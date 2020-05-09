@@ -335,7 +335,7 @@ public final class JSON {
             }
             return intPart;
         } else {
-            var mult = Math.pow(10, expPart);
+            var mult = pow10(expPart);
             // the order of the operations matters! Sum last to avoid precision being lost.
             return intPart * mult + fracPart * mult;
         }
@@ -353,7 +353,7 @@ public final class JSON {
         long result = 0;
         for (var i = 0; i < pos; i++) {
             long b = buffer.get(i);
-            result += b * ((long) Math.pow(10, pos - i - 1));
+            result += b * ((long) pow10(pos - i - 1));
         }
         return result;
     }
@@ -362,7 +362,7 @@ public final class JSON {
         var result = 0d;
         var c = stream.bt - 48;
         for (int i = -1; 0 <= c && c <= 9; i--) {
-            result += c * Math.pow(10, i);
+            result += c * pow10(i);
             var b = stream.read();
             if (b < 0) {
                 break;
@@ -597,6 +597,20 @@ public final class JSON {
             default:
                 throw new JsonException(index, "Illegal hex digit");
         }
+    }
+
+    private static final double[] powersOf10 = new double[]{
+            1e-12, 1e-11, 1e-10, 1e-9, 1e-8, 1e-7,
+            1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0,
+            1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16,
+            1e17, 1e18, 1e19, 1e20, 1e21, 1e22, 1e23, 1e24, 1e25, 1e26, 1e27, 1e28, 1e29, 1e30, 1e31, 1e32
+    };
+
+    private static double pow10(int n) {
+        if (-13 < n && n < 21) {
+            return powersOf10[n + 12];
+        }
+        return Math.pow(10, n);
     }
 
     private void verifyNoTrailingContent(JsonStream jsonStream) throws IOException {
