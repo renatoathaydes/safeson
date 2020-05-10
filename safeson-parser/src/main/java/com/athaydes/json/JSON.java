@@ -86,18 +86,9 @@ public final class JSON {
                 return parseObjectToMap(stream, recursionLevel + 1);
             case '[':
                 return parseArray(stream, recursionLevel + 1);
-            case '-':
-            case '0':
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
-                return parseNumber(stream);
+        }
+        if (startsNumber(stream.bt)) {
+            return parseNumber(stream);
         }
         throw new JsonException(stream.index, "Invalid literal");
     }
@@ -617,6 +608,26 @@ public final class JSON {
             return powersOf10[n + 12];
         }
         return Math.pow(10, n);
+    }
+
+    private static final boolean[] startsNumber = new boolean[256];
+
+    static {
+        startsNumber['-'] = true;
+        startsNumber['0'] = true;
+        startsNumber['1'] = true;
+        startsNumber['2'] = true;
+        startsNumber['3'] = true;
+        startsNumber['4'] = true;
+        startsNumber['5'] = true;
+        startsNumber['6'] = true;
+        startsNumber['7'] = true;
+        startsNumber['8'] = true;
+        startsNumber['9'] = true;
+    }
+
+    private static boolean startsNumber(int b) {
+        return startsNumber[b];
     }
 
     private void verifyNoTrailingContent(JsonStream jsonStream) throws IOException {
