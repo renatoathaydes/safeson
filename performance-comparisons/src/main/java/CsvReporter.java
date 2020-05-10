@@ -19,6 +19,7 @@ public class CsvReporter {
         var parserNames = results.stream()
                 .flatMap(r -> r.timesPerParser.keySet().stream().sorted())
                 .collect(Collectors.toList());
+        // FIXME wrong
         var testNameSeparator = parserNames.stream().skip(1).map((ignore) -> ",").collect(joining());
         var testNames = results.stream().map((r) -> r.name).collect(toList());
         System.out.println(String.join(testNameSeparator, testNames));

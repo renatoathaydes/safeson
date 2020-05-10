@@ -29,4 +29,7 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.8.6'
     implementation 'com.eclipsesource.minimal-json:minimal-json:0.9.5'
     implementation 'com.dslplatform:dsl-json:1.9.5'
+
+    implementation 'com.devskiller:jfairy:0.6.4'
+    runtimeClasspath 'org.slf4j:slf4j-simple:1.7.30'
 }

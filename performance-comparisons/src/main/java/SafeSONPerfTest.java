@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -17,9 +18,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class SafeSONPerfTest {
+public final class SafeSONPerfTest {
     static final Map<String, Times> arrayTimesPerParser = new HashMap<>();
-    static final Map<String, Times> objectTimesPerParser = new HashMap<>();
+    static final Map<String, Times> staticObjectTimesPerParser = new HashMap<>();
+    static final Map<String, Times> randomObjectTimesPerParser = new HashMap<>();
 
     public static void main(String[] args) throws Exception {
         var options = CliOptions.of(args);
@@ -64,9 +66,20 @@ public class SafeSONPerfTest {
                 var total = System.nanoTime() - start;
                 parser.verifyObjectSize(object, 2);
                 if (collectTime) {
-                    objectTimesPerParser.computeIfAbsent(parser.name(),
+                    staticObjectTimesPerParser.computeIfAbsent(parser.name(),
                             (ignore) -> new Times(options.totalRuns - options.warmupRuns)).add(total);
                 }
+            }
+        }
+        if (options.testTypes.contains(TestType.RAND)) {
+            var json = new ByteArrayInputStream(RandomObjectGenerator.generateRandom().getBytes(StandardCharsets.UTF_8));
+            var start = System.nanoTime();
+            Obj object = parser.parseObject(json);
+            var total = System.nanoTime() - start;
+            parser.verifyObjectSize(object, 6);
+            if (collectTime) {
+                randomObjectTimesPerParser.computeIfAbsent(parser.name(),
+                        (ignore) -> new Times(options.totalRuns - options.warmupRuns)).add(total);
             }
         }
     }
@@ -78,7 +91,10 @@ public class SafeSONPerfTest {
             results.add(new TestResult("Int Array", arrayTimesPerParser));
         }
         if (options.testTypes.contains(TestType.RAP)) {
-            results.add(new TestResult("Real Object", objectTimesPerParser));
+            results.add(new TestResult("Static Object", staticObjectTimesPerParser));
+        }
+        if (options.testTypes.contains(TestType.RAND)) {
+            results.add(new TestResult("Random Object", randomObjectTimesPerParser));
         }
         CsvReporter.printReport(results, measuredRuns);
     }

@@ -70,12 +70,13 @@ final class CliOptions {
                 "    tests <values> - tests to run\n\n" +
                 "Available tests:\n\n" +
                 "    ints   - array of 1 million random integers\n" +
-                "    rap    - realistic JSON example (from Eclipse RAP)\n");
+                "    rand   - random object from memory\n" +
+                "    rap    - static object from jar resource (from Eclipse RAP)\n");
         System.exit(1);
         return null;
     }
 }
 
 enum TestType {
-    INTS, RAP
+    INTS, RAP, RAND
 }
