@@ -141,6 +141,9 @@ public final class JSON {
                 throw new JsonException(keyIndex, "Duplicate key: " + key);
             }
             c = stream.bt;
+            if (c <= 0) {
+                throw new JsonException(stream.index, "Unterminated object");
+            }
             if (isWhitespace(c)) {
                 skipWhitespace(stream);
                 c = stream.bt;
@@ -212,6 +215,9 @@ public final class JSON {
         while (c > 0) {
             result.add(probeTypeThenParse(stream, recursionLevel));
             c = stream.bt;
+            if (c <= 0) {
+                throw new JsonException(stream.index, "Unterminated array");
+            }
             if (isWhitespace(c)) {
                 skipWhitespace(stream);
                 c = stream.bt;
@@ -614,7 +620,7 @@ public final class JSON {
     }
 
     private void verifyNoTrailingContent(JsonStream jsonStream) throws IOException {
-        if (isWhitespace(jsonStream.bt)) {
+        if (jsonStream.bt > 0 && isWhitespace(jsonStream.bt)) {
             skipWhitespace(jsonStream);
         }
         if (jsonStream.bt >= 0) {
@@ -638,8 +644,17 @@ public final class JSON {
         }
     }
 
+    private static final boolean[] WHITESPACE_BYTES = new boolean[256];
+
+    static {
+        WHITESPACE_BYTES[' '] = true;
+        WHITESPACE_BYTES['\t'] = true;
+        WHITESPACE_BYTES['\n'] = true;
+        WHITESPACE_BYTES['\r'] = true;
+    }
+
     private static boolean isWhitespace(int c) {
-        return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+        return WHITESPACE_BYTES[c];
     }
 
     private static final class JsonStream extends InputStream {
