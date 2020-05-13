@@ -12,7 +12,9 @@ public abstract class JsonType {
     private JsonType() {
     }
 
-    abstract <T> T match(Function<Scalar, T> onScalar, Function<Compound, T> onCompound);
+    public abstract <T> T match(Function<Scalar, T> onScalar, Function<Compound, T> onCompound);
+
+    public abstract Class<?> getValueType();
 
     enum Container {
         MAP, LIST, OPTIONAL, NONE, UNSUPPORTED;
@@ -52,8 +54,13 @@ public abstract class JsonType {
         }
 
         @Override
-        <T> T match(Function<Scalar, T> onScalar, Function<Compound, T> onCompound) {
+        public <T> T match(Function<Scalar, T> onScalar, Function<Compound, T> onCompound) {
             return onCompound.apply(this);
+        }
+
+        @Override
+        public Class<?> getValueType() {
+            return type.getValueType();
         }
     }
 
@@ -69,8 +76,9 @@ public abstract class JsonType {
         }
 
         @Override
-        <T> T match(Function<Scalar, T> onScalar, Function<Compound, T> onCompound) {
+        public <T> T match(Function<Scalar, T> onScalar, Function<Compound, T> onCompound) {
             return onScalar.apply(this);
         }
+
     }
 }

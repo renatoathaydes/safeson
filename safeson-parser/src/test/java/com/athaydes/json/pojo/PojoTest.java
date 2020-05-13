@@ -1,5 +1,6 @@
 package com.athaydes.json.pojo;
 
+import com.athaydes.json.JSON;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
@@ -11,7 +12,7 @@ public class PojoTest {
 
     @Test
     void canDeserializeSmallPojo() {
-
+        var parser = new JSON();
     }
 }
 
@@ -96,5 +97,10 @@ final class TakesInterface {
 
 final class TakesAbstractClass {
     public TakesAbstractClass(InputStream is) {
+    }
+}
+
+final class GenericClass<T> {
+    public GenericClass(T t) {
     }
 }

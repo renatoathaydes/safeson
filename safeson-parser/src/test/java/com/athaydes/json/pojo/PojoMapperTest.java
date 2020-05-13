@@ -14,8 +14,12 @@ public class PojoMapperTest {
         var mapper = PojoMapper.of(SmallPojo.class);
         assertEquals(1, mapper.getConstructors().size());
         assertEquals(List.of("hello", "count"), List.copyOf(mapper.getConstructors().get(0).getParamNames()));
+
+        assertEquals(String.class, mapper.getConstructors().get(0).getTypeOfParameter("hello").getValueType());
         assertEquals(String.class, mapper.getConstructors().get(0).getTypeOfParameter("hello")
                 .match(s -> s.getValueType(), c -> null));
+
+        assertEquals(int.class, mapper.getConstructors().get(0).getTypeOfParameter("count").getValueType());
         assertEquals(int.class, mapper.getConstructors().get(0).getTypeOfParameter("count")
                 .match(s -> s.getValueType(), c -> null));
 
@@ -49,6 +53,7 @@ public class PojoMapperTest {
 
         assertEquals(JsonType.Container.LIST, mapper.getConstructors().get(0).getTypeOfParameter("strings")
                 .match(s -> null, c -> c.getContainer()));
+        assertEquals(String.class, mapper.getConstructors().get(0).getTypeOfParameter("strings").getValueType());
         assertEquals(String.class, mapper.getConstructors().get(0).getTypeOfParameter("strings")
                 .match(s -> null, c -> c.getType().match(s -> s.getValueType(), c2 -> "wrong")));
 
@@ -56,12 +61,14 @@ public class PojoMapperTest {
                 .match(s -> null, c -> c.getContainer()));
         assertEquals(JsonType.Container.LIST, mapper.getConstructors().get(0).getTypeOfParameter("stringsMap")
                 .match(s -> null, c -> c.getType().match(s -> null, c2 -> c2.getContainer())));
+        assertEquals(String.class, mapper.getConstructors().get(0).getTypeOfParameter("stringsMap").getValueType());
         assertEquals(String.class, mapper.getConstructors().get(0).getTypeOfParameter("stringsMap")
                 .match(s -> null, c -> c.getType().match(s -> null, c2 -> c2.getType()
                         .match(s -> s.getValueType(), c3 -> "wrong"))));
 
         assertEquals(JsonType.Container.OPTIONAL, mapper.getConstructors().get(0).getTypeOfParameter("optionalPojo")
                 .match(s -> null, c -> c.getContainer()));
+        assertEquals(SmallPojo.class, mapper.getConstructors().get(0).getTypeOfParameter("optionalPojo").getValueType());
         assertEquals(SmallPojo.class, mapper.getConstructors().get(0).getTypeOfParameter("optionalPojo")
                 .match(s -> null, c -> c.getType().match(s -> s.getValueType(), c2 -> "wrong")));
 
@@ -120,4 +127,5 @@ public class PojoMapperTest {
                         "(type must be concrete): class java.io.InputStream",
                 err.getMessage());
     }
+
 }
