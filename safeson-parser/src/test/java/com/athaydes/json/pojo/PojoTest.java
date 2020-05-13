@@ -2,6 +2,7 @@ package com.athaydes.json.pojo;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -76,5 +77,24 @@ final class LargerPojo {
 
     public LargerPojo(long many, double level) {
         this(null, true, many, level, List.of(), Map.of(), Optional.empty());
+    }
+}
+
+final class NoConstructor {
+    String s;
+}
+
+final class TakesArray {
+    public TakesArray(int[] ints) {
+    }
+}
+
+final class TakesInterface {
+    public TakesInterface(Runnable run) {
+    }
+}
+
+final class TakesAbstractClass {
+    public TakesAbstractClass(InputStream is) {
     }
 }

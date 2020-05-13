@@ -5,8 +5,10 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class PojoMapperTest {
+
     @Test
     void canMapPojo() {
         var mapper = PojoMapper.of(SmallPojo.class);
@@ -86,4 +88,36 @@ public class PojoMapperTest {
 
     }
 
+    @Test
+    void cannotMapTypeWithoutConstructor() {
+        var err = assertThrows(PojoException.class, () -> PojoMapper.of(NoConstructor.class));
+        assertEquals("Cannot create POJO Mapper, no constructors available", err.getMessage());
+    }
+
+    @Test
+    void cannotMapTypeTakingArray() {
+        var err = assertThrows(PojoException.class, () -> PojoMapper.of(TakesArray.class));
+        assertEquals("Illegal type parameter for ints in constructor " +
+                        "public com.athaydes.json.pojo.TakesArray(int[]) " +
+                        "(type must not be an array): class [I",
+                err.getMessage());
+    }
+
+    @Test
+    void cannotMapTypeTakingInterface() {
+        var err = assertThrows(PojoException.class, () -> PojoMapper.of(TakesInterface.class));
+        assertEquals("Illegal type parameter for run in constructor " +
+                        "public com.athaydes.json.pojo.TakesInterface(java.lang.Runnable) " +
+                        "(type must be concrete): interface java.lang.Runnable",
+                err.getMessage());
+    }
+
+    @Test
+    void cannotMapTypeTakingAbstractClass() {
+        var err = assertThrows(PojoException.class, () -> PojoMapper.of(TakesAbstractClass.class));
+        assertEquals("Illegal type parameter for is in constructor " +
+                        "public com.athaydes.json.pojo.TakesAbstractClass(java.io.InputStream) " +
+                        "(type must be concrete): class java.io.InputStream",
+                err.getMessage());
+    }
 }

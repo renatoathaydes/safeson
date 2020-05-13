@@ -72,16 +72,23 @@ public final class PojoConstructor<T> {
             var container = JsonType.Container.getContainerOf(rawType);
             return getParameterJsonType(parameter, rawType, container);
         }
+        String errorReason = "";
         if (typeParameter instanceof Class<?>) {
             var type = (Class<?>) typeParameter;
-            if (type.isPrimitive() ||
-                    (!type.isInterface() && !Modifier.isAbstract(type.getModifiers()))) {
+            if (type.isArray()) {
+                errorReason = "type must not be an array";
+            } else if (type.isAnonymousClass()) {
+                errorReason = "type cannot be anonymous";
+            } else if (type.isInterface() || (!type.isPrimitive() && Modifier.isAbstract(type.getModifiers()))) {
+                errorReason = "type must be concrete";
+            }
+            if (errorReason.isEmpty()) {
                 return new JsonType.Scalar(type);
             }
         }
 
         throw new PojoException("Illegal type parameter for " + paramDescription(parameter) +
-                " (must be a concrete type): " + typeParameter);
+                " (" + errorReason + "): " + typeParameter);
     }
 
     private static String paramDescription(Parameter parameter) {

@@ -12,7 +12,7 @@ public final class PojoMapper<T> {
 
     public PojoMapper(List<PojoConstructor<T>> constructors) {
         if (constructors.isEmpty()) {
-            throw new IllegalArgumentException("Cannot create POJO Mapper, no constructors available");
+            throw new PojoException("Cannot create POJO Mapper, no constructors available");
         }
         this.constructors = constructors;
     }
