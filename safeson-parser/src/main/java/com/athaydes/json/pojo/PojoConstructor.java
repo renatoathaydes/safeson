@@ -108,6 +108,10 @@ public final class PojoConstructor<T> {
         return paramTypeByName.get(parameter);
     }
 
+    public Map<String, JsonType> getParamTypeByName() {
+        return paramTypeByName;
+    }
+
     public int size() {
         return paramNames.size();
     }

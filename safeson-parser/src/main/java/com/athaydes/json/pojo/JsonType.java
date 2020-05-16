@@ -1,22 +1,24 @@
 package com.athaydes.json.pojo;
 
+import com.athaydes.json.util.CheckedFunction;
+
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 
 public abstract class JsonType {
 
     private JsonType() {
     }
 
-    public abstract <T> T match(Function<Scalar, T> onScalar, Function<Compound, T> onCompound);
+    public abstract <T> T match(CheckedFunction<Scalar, T> onScalar,
+                                CheckedFunction<Compound, T> onCompound) throws Exception;
 
     public abstract Class<?> getValueType();
 
-    enum Container {
+    public enum Container {
         MAP, LIST, OPTIONAL, NONE, UNSUPPORTED;
 
         public static Container getContainerOf(Type type) {
@@ -40,7 +42,7 @@ public abstract class JsonType {
         private final JsonType type;
         private final Container container;
 
-        public Compound(JsonType type, Container container) {
+        Compound(JsonType type, Container container) {
             this.type = type;
             this.container = container;
         }
@@ -54,8 +56,9 @@ public abstract class JsonType {
         }
 
         @Override
-        public <T> T match(Function<Scalar, T> onScalar, Function<Compound, T> onCompound) {
-            return onCompound.apply(this);
+        public <T> T match(CheckedFunction<Scalar, T> onScalar,
+                           CheckedFunction<Compound, T> onCompound) throws Exception {
+            return onCompound.applyChecked(this);
         }
 
         @Override
@@ -67,7 +70,7 @@ public abstract class JsonType {
     public static final class Scalar extends JsonType {
         private final Class<?> type;
 
-        public Scalar(Class<?> type) {
+        Scalar(Class<?> type) {
             this.type = type;
         }
 
@@ -76,8 +79,9 @@ public abstract class JsonType {
         }
 
         @Override
-        public <T> T match(Function<Scalar, T> onScalar, Function<Compound, T> onCompound) {
-            return onScalar.apply(this);
+        public <T> T match(CheckedFunction<Scalar, T> onScalar,
+                           CheckedFunction<Compound, T> onCompound) throws Exception {
+            return onScalar.applyChecked(this);
         }
 
     }

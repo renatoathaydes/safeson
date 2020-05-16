@@ -7,13 +7,20 @@ import java.util.Map;
 import java.util.Set;
 
 public final class Pojos {
+
+    public static final Pojos EMPTY = new Pojos(Map.of());
+
     private static final Set<Class<?>> NATIVE_TYPES = Set.of(int.class, long.class, double.class, boolean.class,
             String.class, List.class, Map.class);
 
     private final Map<? extends Class<?>, ? extends PojoMapper<?>> mappers;
 
-    public Pojos(Map<? extends Class<?>, ? extends PojoMapper<?>> mappers) {
-        this.mappers = validate(mappers);
+    private Pojos(Map<? extends Class<?>, ? extends PojoMapper<?>> mappers) {
+        this.mappers = mappers;
+    }
+
+    static Pojos of(Map<? extends Class<?>, ? extends PojoMapper<?>> mappers) {
+        return new Pojos(validate(mappers));
     }
 
     public static Pojos of(Class<?>... types) {
@@ -24,15 +31,7 @@ public final class Pojos {
         return NATIVE_TYPES.contains(type);
     }
 
-    public PojoMapper<?> getMapper(Class<?> type) {
-        return mappers.get(type);
-    }
-
-    public Collection<? extends PojoMapper<?>> getMappers() {
-        return mappers.values();
-    }
-
-    private Map<? extends Class<?>, ? extends PojoMapper<?>> validate(
+    private static Map<? extends Class<?>, ? extends PojoMapper<?>> validate(
             Map<? extends Class<?>, ? extends PojoMapper<?>> mappers) {
         Set<Class<?>> requiredPojoTypes = new HashSet<>();
         for (PojoMapper<?> mapper : mappers.values()) {
@@ -50,5 +49,14 @@ public final class Pojos {
         }
 
         return mappers;
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> PojoMapper<T> getMapper(Class<T> type) {
+        return (PojoMapper<T>) mappers.get(type);
+    }
+
+    public Collection<? extends PojoMapper<?>> getMappers() {
+        return mappers.values();
     }
 }

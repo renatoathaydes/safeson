@@ -1,91 +1,157 @@
 package com.athaydes.json;
 
+import com.athaydes.json.pojo.JsonType;
+import com.athaydes.json.pojo.PojoException;
+import com.athaydes.json.pojo.PojoMapper;
+import com.athaydes.json.pojo.Pojos;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public final class JSON {
 
     private final JsonConfig config;
+    private final Pojos pojos;
 
     private ByteBuffer buffer;
 
     public JSON() {
-        this(JsonConfig.DEFAULT);
+        this(JsonConfig.DEFAULT, Pojos.EMPTY);
     }
 
     public JSON(JsonConfig config) {
+        this(config, Pojos.EMPTY);
+    }
+
+    public JSON(Pojos pojos) {
+        this(JsonConfig.DEFAULT, pojos);
+    }
+
+    public JSON(JsonConfig config, Pojos pojos) {
         this.config = config;
+        this.pojos = pojos;
         buffer = ByteBuffer.allocate(Math.min(1024, config.maxStringLength()));
         buffer.mark();
     }
 
     public Object parse(String json) {
         var stream = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
-        return parse(stream, Object.class);
+        return parse(stream, Object.class, 0);
     }
 
     public <T> T parse(String json, Class<T> type) {
         var stream = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
-        return parse(stream, type);
+        return parse(stream, type, 0);
     }
 
     public Object parse(InputStream stream) {
-        return parse(stream, Object.class);
+        return parse(stream, Object.class, 0);
     }
 
     public <T> T parse(InputStream stream, Class<T> type) {
-        var jsonStream = new JsonStream(stream);
+        return parse(stream, type, 0);
+    }
+
+    private <T> T parse(InputStream stream, Class<T> type, int recursionLevel) {
+        JsonStream jsonStream = new JsonStream(stream);
+        try {
+            jsonStream.read();
+        } catch (IOException e) {
+            throw new JsonException(0, "Unable to read input");
+        }
+        var result = parse(jsonStream, type, recursionLevel);
+        if (config.shouldConsumeTrailingContent()) {
+            try {
+                verifyNoTrailingContent(jsonStream);
+            } catch (IOException e) {
+                throw new JsonException(e);
+            }
+        }
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> T parse(JsonStream jsonStream, Class<T> type, int recursionLevel) {
         try {
             skipWhitespace(jsonStream);
             T result;
-            if (type.equals(String.class)) {
-                result = type.cast(parseString(jsonStream));
+            if (type.isPrimitive()) {
+                if (type.equals(boolean.class)) {
+                    result = (T) parseBoolean(jsonStream);
+                } else if (type.equals(int.class) || type.equals(long.class) || type.equals(double.class)) {
+                    result = (T) parseNumber(jsonStream);
+                } else {
+                    throw new JsonException(jsonStream.index, "Unmapped type: " + type);
+                }
+            } else if (type.equals(String.class)) {
+                result = type.cast(parseString(jsonStream, null));
             } else if (type.equals(Boolean.class)) {
                 result = type.cast(parseBoolean(jsonStream));
             } else if (type.equals(List.class)) {
-                result = type.cast(parseArray(jsonStream, 0));
+                result = type.cast(parseArray(jsonStream, null, recursionLevel + 1));
             } else if (Number.class.isAssignableFrom(type)) {
                 result = type.cast(parseNumber(jsonStream));
             } else if (type.equals(Object.class)) {
-                result = type.cast(probeTypeThenParse(jsonStream, 0));
+                result = type.cast(probeTypeThenParse(jsonStream, recursionLevel + 1));
             } else if (type.equals(Void.class)) {
                 result = type.cast(parseNull(jsonStream));
             } else if (type.equals(Map.class)) {
-                result = type.cast(parseObjectToMap(jsonStream, 0));
+                result = type.cast(parseObjectToMap(jsonStream, null, recursionLevel + 1));
             } else {
-                result = parseObject(jsonStream, type, 0);
-            }
-            if (config.shouldConsumeTrailingContent()) {
-                verifyNoTrailingContent(jsonStream);
+                var mapper = pojos.getMapper(type);
+                if (mapper == null) {
+                    throw new JsonException(jsonStream.index, "Unmapped type: " + type);
+                }
+                result = type.cast(parseObject(jsonStream, mapper, recursionLevel + 1));
             }
             return result;
-        } catch (JsonException e) {
+        } catch (JsonException | PojoException e) {
             throw e;
         } catch (Exception e) {
             throw new JsonException(e);
         }
     }
 
+    private Object parse(JsonStream jsonStream, JsonType type, int recursionLevel) throws Exception {
+        return type.match(scalar -> parse(jsonStream, scalar.getValueType(), recursionLevel), compound -> {
+            switch (compound.getContainer()) {
+                case MAP:
+                    return parseObjectToMap(jsonStream, compound.getType(), recursionLevel + 1);
+                case LIST:
+                    return parseArray(jsonStream, compound.getType(), recursionLevel + 1);
+                case OPTIONAL:
+                    return Optional.of(parse(jsonStream, compound.getType(), recursionLevel));
+                case NONE:
+                    return parse(jsonStream, compound.getValueType(), recursionLevel);
+                case UNSUPPORTED:
+                default:
+                    throw new IllegalStateException("Unexpected type container: " + compound.getContainer());
+            }
+        });
+    }
+
     private Object probeTypeThenParse(JsonStream stream, int recursionLevel) throws Exception {
         switch (stream.bt) {
             case '"':
-                return parseString(stream);
+                return parseString(stream, null);
             case 't':
             case 'f':
                 return parseBoolean(stream);
             case 'n':
                 return parseNull(stream);
             case '{':
-                return parseObjectToMap(stream, recursionLevel + 1);
+                return parseObjectToMap(stream, null, recursionLevel + 1);
             case '[':
-                return parseArray(stream, recursionLevel + 1);
+                return parseArray(stream, null, recursionLevel + 1);
         }
         if (startsNumber(stream.bt)) {
             return parseNumber(stream);
@@ -93,13 +159,16 @@ public final class JSON {
         throw new JsonException(stream.index, "Invalid literal");
     }
 
-    private Map<String, Object> parseObjectToMap(JsonStream stream, int recursionLevel) throws Exception {
+    private Map<String, Object> parseObjectToMap(JsonStream stream,
+                                                 JsonType valueType,
+                                                 int recursionLevel) throws Exception {
         if (stream.bt != '{') {
             throw new JsonException(stream.index, "Expected object but got '" + ((char) stream.bt) + "'");
         }
         if (recursionLevel >= config.maxRecursionDepth()) {
             throw new JsonException(stream.index, "Recursion limit breached");
         }
+        stream.read();
         skipWhitespace(stream);
         int c = stream.bt;
         Map<String, Object> result = new LinkedHashMap<>();
@@ -110,13 +179,11 @@ public final class JSON {
         var mapUpdater = config.mapUpdater();
         while (c > 0) {
             var keyIndex = stream.index;
-            var key = parseString(stream);
+            var key = parseString(stream, null);
+            skipWhitespace(stream);
             c = stream.bt;
-            if (isWhitespace(c)) {
-                skipWhitespace(stream);
-                c = stream.bt;
-            }
             if (c == ':') {
+                stream.read();
                 skipWhitespace(stream);
                 c = stream.bt;
             } else if (c < 0) {
@@ -127,7 +194,9 @@ public final class JSON {
             if (c < 0) {
                 break;
             }
-            var ok = mapUpdater.updateMap(result, key, probeTypeThenParse(stream, recursionLevel));
+            var ok = mapUpdater.updateMap(result, key, valueType == null
+                    ? probeTypeThenParse(stream, recursionLevel)
+                    : parse(stream, valueType, recursionLevel));
             if (!ok) {
                 throw new JsonException(keyIndex, "Duplicate key: " + key);
             }
@@ -135,11 +204,10 @@ public final class JSON {
             if (c <= 0) {
                 throw new JsonException(stream.index, "Unterminated object");
             }
-            if (isWhitespace(c)) {
-                skipWhitespace(stream);
-                c = stream.bt;
-            }
+            skipWhitespace(stream);
+            c = stream.bt;
             if (c == ',') {
+                stream.read();
                 skipWhitespace(stream);
                 c = stream.bt;
             } else if (c == '}') {
@@ -154,48 +222,76 @@ public final class JSON {
         throw new JsonException(stream.index, "Unterminated object");
     }
 
-    private <T> T parseObject(JsonStream stream, Class<T> type, int recursionLevel) throws Exception {
-        int b;
-        T result = type.getDeclaredConstructor().newInstance();
-        // FIXME start from current stream.bt
-        while ((b = stream.read()) > 0) {
-            switch (b) {
-                case '{':
-                    while (true) {
-                        skipWhitespace(stream);
-                        var key = parseString(stream);
-                        var field = type.getDeclaredField(key);
-                        var fType = field.getType();
-                        skipWhitespace(stream);
-                        if (stream.bt != ':') {
-                            throw new JsonException(stream.index, "Expected key-value separator ':', got '" +
-                                    ((char) stream.bt) + "'");
-                        }
-                        skipWhitespace(stream);
-                        if (Number.class.isAssignableFrom(fType)) {
-                            field.set(result, parseNumber(stream));
-                        } else if (boolean.class.isAssignableFrom(fType)) {
-                            field.set(result, parseBoolean(stream));
-                        } else if (String.class.isAssignableFrom(fType)) {
-                            field.set(result, parseString(stream));
-                        }
-                        skipWhitespace(stream);
-                    }
-                default:
-                    throw new JsonException(stream.index, "Expected object starting character '{', got '" +
-                            ((char) stream.bt) + "'");
-            }
-        }
-        return result;
-    }
-
-    private List<Object> parseArray(JsonStream stream, int recursionLevel) throws Exception {
-        if (stream.bt != '[') {
-            throw new JsonException(stream.index, "Expected array but got '" + ((char) stream.bt) + "'");
+    private Object parseObject(JsonStream stream, PojoMapper<?> mapper, int recursionLevel) throws Exception {
+        if (stream.bt != '{') {
+            throw new JsonException(stream.index, "Expected object but got '" + ((char) stream.bt) + "'");
         }
         if (recursionLevel >= config.maxRecursionDepth()) {
             throw new JsonException(stream.index, "Recursion limit breached");
         }
+        stream.read();
+        skipWhitespace(stream);
+        int c = stream.bt;
+        Map<String, Object> args = new HashMap<>();
+        if (c == '}') {
+            stream.read();
+            return mapper.create(args);
+        }
+        var mapUpdater = config.mapUpdater();
+        while (c > 0) {
+            var keyIndex = stream.index;
+            var key = parseString(stream, mapper);
+            skipWhitespace(stream);
+            c = stream.bt;
+            if (c == ':') {
+                stream.read();
+                skipWhitespace(stream);
+                c = stream.bt;
+            } else if (c < 0) {
+                break;
+            } else {
+                throw new JsonException(stream.index, "Expected ':' or '}', got '" + ((char) c) + "'");
+            }
+            if (c < 0) {
+                break;
+            }
+            var expectedValueType = mapper.getTypeOf(key);
+            var ok = mapUpdater.updateMap(args, key, expectedValueType == null ?
+                    probeTypeThenParse(stream, recursionLevel) :
+                    parse(stream, expectedValueType, recursionLevel));
+            if (!ok) {
+                throw new JsonException(keyIndex, "Duplicate key: " + key);
+            }
+            c = stream.bt;
+            if (c <= 0) {
+                throw new JsonException(stream.index, "Unterminated object");
+            }
+            skipWhitespace(stream);
+            c = stream.bt;
+            if (c == ',') {
+                stream.read();
+                skipWhitespace(stream);
+                c = stream.bt;
+            } else if (c == '}') {
+                stream.read();
+                return mapper.create(args);
+            } else if (c < 0) {
+                break;
+            } else {
+                throw new JsonException(stream.index, "Expected ',' or '}', got '" + ((char) c) + "'");
+            }
+        }
+        throw new JsonException(stream.index, "Unterminated object");
+    }
+
+    private List<Object> parseArray(JsonStream stream, JsonType itemType, int recursionLevel) throws Exception {
+        if (stream.bt != '[') {
+            throw new JsonException(stream.index, "Expected array but got '" + ((char) stream.bt) + "'");
+        }
+        if (recursionLevel > config.maxRecursionDepth()) {
+            throw new JsonException(stream.index, "Recursion limit breached");
+        }
+        stream.read();
         skipWhitespace(stream);
         int c = stream.bt;
         var result = new ArrayList<>();
@@ -204,16 +300,19 @@ public final class JSON {
             return result;
         }
         while (c > 0) {
-            result.add(probeTypeThenParse(stream, recursionLevel));
+            if (itemType == null) {
+                result.add(probeTypeThenParse(stream, recursionLevel));
+            } else {
+                result.add(parse(stream, itemType, recursionLevel));
+            }
             c = stream.bt;
             if (c <= 0) {
                 throw new JsonException(stream.index, "Unterminated array");
             }
-            if (isWhitespace(c)) {
-                skipWhitespace(stream);
-                c = stream.bt;
-            }
+            skipWhitespace(stream);
+            c = stream.bt;
             if (c == ',') {
+                stream.read();
                 skipWhitespace(stream);
                 c = stream.bt;
             } else if (c == ']') {
@@ -369,7 +468,8 @@ public final class JSON {
         return result;
     }
 
-    private String parseString(JsonStream stream) throws IOException {
+    private String parseString(JsonStream stream,
+                               PojoMapper<?> mapper) throws IOException {
         buffer.reset();
         if (stream.bt == '"') {
             var index = 0;
@@ -443,7 +543,9 @@ public final class JSON {
                 throw new JsonException(stream.index, "Unterminated String");
             }
             byte[] bytes = buffer.array();
-            return new String(bytes, 0, buffer.position(), StandardCharsets.UTF_8);
+            return mapper == null ?
+                    new String(bytes, 0, buffer.position(), StandardCharsets.UTF_8)
+                    : mapper.keyFor(bytes, buffer.position());
         } else {
             throw new JsonException(stream.index, "Expected '\"', got '" + ((char) stream.bt) + "'");
         }
@@ -640,7 +742,13 @@ public final class JSON {
     }
 
     private void skipWhitespace(JsonStream stream) throws IOException {
-        var index = isWhitespace(stream.bt) ? 1 : 0;
+        if (stream.bt < 0) {
+            return;
+        }
+        if (!isWhitespace(stream.bt)) {
+            return;
+        }
+        var index = 1;
         final var maxIndex = config.maxWhitespace();
         int b;
         while ((b = stream.read()) > 0) {

@@ -2,15 +2,18 @@ package com.athaydes.json.pojo;
 
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class PojoMapperTest {
 
     @Test
-    void canMapPojo() {
+    void canMapPojo() throws Exception {
         var mapper = PojoMapper.of(SmallPojo.class);
         assertEquals(1, mapper.getConstructors().size());
         assertEquals(List.of("hello", "count"), List.copyOf(mapper.getConstructors().get(0).getParamNames()));
@@ -28,7 +31,7 @@ public class PojoMapperTest {
     }
 
     @Test
-    void canMapManyConstructors() {
+    void canMapManyConstructors() throws Exception {
         var mapper = PojoMapper.of(LargerPojo.class);
         assertEquals(3, mapper.getConstructors().size());
 
@@ -93,6 +96,39 @@ public class PojoMapperTest {
         assertEquals(double.class, mapper.getConstructors().get(2).getTypeOfParameter("level")
                 .match(s -> s.getValueType(), c -> null));
 
+    }
+
+    @Test
+    void canCacheStringKeys() {
+        var mapper = PojoMapper.of(SmallPojo.class);
+        var helloBytes = "hello".getBytes(StandardCharsets.UTF_8);
+        var countBytes = "count".getBytes(StandardCharsets.UTF_8);
+
+        var helloKey = mapper.keyFor(helloBytes, helloBytes.length);
+        var countKey = mapper.keyFor(countBytes, countBytes.length);
+
+        assertEquals("hello", helloKey);
+        assertEquals("count", countKey);
+
+        // verify keys were cached
+        assertSame(helloKey, mapper.keyFor(helloBytes, helloBytes.length));
+        assertSame(helloKey, mapper.keyFor(helloBytes, helloBytes.length));
+        assertSame(countKey, mapper.keyFor(countBytes, countBytes.length));
+        assertSame(countKey, mapper.keyFor(countBytes, countBytes.length));
+    }
+
+    @Test
+    void doesNotCacheNonKeys() {
+        var mapper = PojoMapper.of(SmallPojo.class);
+        var fooBytes = "foo".getBytes(StandardCharsets.UTF_8);
+
+        var fooKey = mapper.keyFor(fooBytes, fooBytes.length);
+
+        assertEquals("foo", fooKey);
+
+        // verify keys were not cached
+        assertNotSame(fooKey, mapper.keyFor(fooBytes, fooBytes.length));
+        assertNotSame(fooKey, mapper.keyFor(fooBytes, fooBytes.length));
     }
 
     @Test

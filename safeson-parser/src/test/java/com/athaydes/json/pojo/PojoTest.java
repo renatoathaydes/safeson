@@ -8,11 +8,71 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 public class PojoTest {
 
     @Test
     void canDeserializeSmallPojo() {
-        var parser = new JSON();
+        var parser = new JSON(Pojos.of(SmallPojo.class));
+        var smallPojo = parser.parse("{\"hello\":\"Ola\",\"count\":32}", SmallPojo.class);
+        assertEquals("Ola", smallPojo.getHello());
+        assertEquals(32, smallPojo.getCount());
+    }
+
+    @Test
+    void canDeserializeLargerPojoWithAllArguments() {
+        var parser = new JSON(Pojos.of(SmallPojo.class, LargerPojo.class));
+        var largerPojo = parser.parse("{" +
+                "\"smallPojo\": {\"hello\":\"Ola\",\"count\":32}," +
+                "\"isTrue\": true," +
+                "\"many\": 500," +
+                "\"level\": 0.24," +
+                "\"strings\": [\"a\", \"b\", \"c\"]," +
+                "\"stringsMap\": {\"foo\": [\"bar\"]}," +
+                "\"optionalPojo\": {\"hello\": \"Hej\", \"count\": 42}" +
+                "}", LargerPojo.class);
+        /*
+        (SmallPojo smallPojo, boolean isTrue, long many, double level, List<String> strings,
+                      Map<String, List<String>> stringsMap, Optional<SmallPojo> optionalPojo)
+         */
+        assertEquals("Ola", largerPojo.smallPojo.getHello());
+        assertEquals(32, largerPojo.smallPojo.getCount());
+        assertTrue(largerPojo.isTrue);
+        assertEquals(500, largerPojo.many);
+        assertEquals(0.24, largerPojo.level, 1e-15);
+        assertEquals(List.of("a", "b", "c"), largerPojo.strings);
+        assertEquals(Map.of("foo", List.of("bar")), largerPojo.stringsMap);
+        assertTrue(largerPojo.optionalPojo.isPresent());
+        assertEquals("Hej", largerPojo.optionalPojo.get().getHello());
+        assertEquals(42, largerPojo.optionalPojo.get().getCount());
+    }
+
+    @Test
+    void canDeserializeLargerPojoWithMissingOptionalArgument() {
+        var parser = new JSON(Pojos.of(SmallPojo.class, LargerPojo.class));
+        var largerPojo = parser.parse("{" +
+                "\"isTrue\": false," +
+                "\"level\": 2.56," +
+                "\"many\": 950332," +
+                "\"strings\": [\"hello\", \"bye\"]," +
+                "\"smallPojo\": {\"hello\":\"OI\",\"count\":999}," +
+                "\"stringsMap\": {}" +
+                "}", LargerPojo.class);
+        /*
+        (SmallPojo smallPojo, boolean isTrue, long many, double level, List<String> strings,
+                      Map<String, List<String>> stringsMap, Optional<SmallPojo> optionalPojo)
+         */
+        assertEquals("OI", largerPojo.smallPojo.getHello());
+        assertEquals(999, largerPojo.smallPojo.getCount());
+        assertFalse(largerPojo.isTrue);
+        assertEquals(950332, largerPojo.many);
+        assertEquals(2.56, largerPojo.level, 1e-15);
+        assertEquals(List.of("hello", "bye"), largerPojo.strings);
+        assertEquals(Map.of(), largerPojo.stringsMap);
+        assertFalse(largerPojo.optionalPojo.isPresent());
     }
 }
 
