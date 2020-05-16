@@ -92,7 +92,7 @@ public final class PojoMapper<T> {
                 }
             }
         }
-        return new String(bytes, StandardCharsets.UTF_8);
+        return new String(bytes, 0, len, StandardCharsets.UTF_8);
     }
 
     public List<PojoConstructor<T>> getConstructors() {
@@ -111,7 +111,7 @@ public final class PojoMapper<T> {
         Set<String> argNames = args.keySet();
         for (PojoConstructor<T> constructor : constructors) {
             Set<String> paramNames = constructor.getParamNames();
-            if (paramNames.containsAll(argNames)) {
+            if (argNames.containsAll(constructor.getMandatoryParamNames())) {
                 var arguments = new Object[paramNames.size()];
                 int i = 0;
                 for (String paramName : paramNames) {
@@ -124,7 +124,8 @@ public final class PojoMapper<T> {
                 return constructor.createPojo(arguments);
             }
         }
-        throw new PojoException("JSON object???");
+        throw new PojoException("Unable to create instance of " + pojoType.getValueType() + ", " +
+                "available fields do not match any available constructor: " + argNames);
     }
 
     @SuppressWarnings("unchecked")
@@ -143,7 +144,7 @@ public final class PojoMapper<T> {
             return new PojoConstructor<T>((Constructor<T>) c, params);
         })
                 // make sure the longest constructors come first
-                .sorted(comparing(c -> -c.getParamNames().size()))
+                .sorted(comparing(c -> -c.getMandatoryParamNames().size()))
                 .collect(toList());
 
         var mapper = new PojoMapper<>(type, constructors);

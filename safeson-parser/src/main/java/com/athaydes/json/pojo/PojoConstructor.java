@@ -7,6 +7,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -15,18 +16,29 @@ import java.util.Set;
 public final class PojoConstructor<T> {
     private final Constructor<T> constructor;
     private final Set<String> paramNames;
+    private final Set<String> mandatoryParamNames;
     private final Map<String, JsonType> paramTypeByName;
 
     public PojoConstructor(Constructor<T> constructor, List<Parameter> parameters) {
         this.constructor = constructor;
         Set<String> pNames = new LinkedHashSet<>(parameters.size());
+        Set<String> mandatoryPNames = new HashSet<>(parameters.size());
         Map<String, JsonType> params = new HashMap<>(pNames.size());
         for (Parameter parameter : parameters) {
             var pName = parameter.getName();
             pNames.add(pName);
-            params.put(pName, toJsonType(parameter));
+            JsonType jsonType = toJsonType(parameter);
+            params.put(pName, jsonType);
+            try {
+                if (jsonType.match(scalar -> true, compound -> compound.getContainer() != JsonType.Container.OPTIONAL)) {
+                    mandatoryPNames.add(pName);
+                }
+            } catch (Exception e) {
+                // impossible as the lambdas given to "match" do not throw
+            }
         }
         this.paramNames = Collections.unmodifiableSet(pNames);
+        this.mandatoryParamNames = Collections.unmodifiableSet(mandatoryPNames);
         this.paramTypeByName = Collections.unmodifiableMap(params);
     }
 
@@ -102,6 +114,10 @@ public final class PojoConstructor<T> {
 
     public Set<String> getParamNames() {
         return paramNames;
+    }
+
+    public Set<String> getMandatoryParamNames() {
+        return mandatoryParamNames;
     }
 
     public JsonType getTypeOfParameter(String parameter) {

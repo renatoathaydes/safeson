@@ -111,7 +111,7 @@ public final class JSON {
                 if (mapper == null) {
                     throw new JsonException(jsonStream.index, "Unmapped type: " + type);
                 }
-                result = type.cast(parseObject(jsonStream, mapper, recursionLevel + 1));
+                result = type.cast(parsePojo(jsonStream, mapper, recursionLevel + 1));
             }
             return result;
         } catch (JsonException | PojoException e) {
@@ -222,7 +222,7 @@ public final class JSON {
         throw new JsonException(stream.index, "Unterminated object");
     }
 
-    private Object parseObject(JsonStream stream, PojoMapper<?> mapper, int recursionLevel) throws Exception {
+    private Object parsePojo(JsonStream stream, PojoMapper<?> mapper, int recursionLevel) throws Exception {
         if (stream.bt != '{') {
             throw new JsonException(stream.index, "Expected object but got '" + ((char) stream.bt) + "'");
         }
@@ -256,9 +256,19 @@ public final class JSON {
                 break;
             }
             var expectedValueType = mapper.getTypeOf(key);
-            var ok = mapUpdater.updateMap(args, key, expectedValueType == null ?
-                    probeTypeThenParse(stream, recursionLevel) :
-                    parse(stream, expectedValueType, recursionLevel));
+            Object value;
+            if (expectedValueType == null) {
+                value = probeTypeThenParse(stream, recursionLevel);
+            } else if (expectedValueType.match(scalar -> false,
+                    compound -> compound.getContainer() == JsonType.Container.OPTIONAL) &&
+                    stream.bt == 'n') {
+                value = Optional.ofNullable(parseNull(stream));
+            } else try {
+                value = parse(stream, expectedValueType, recursionLevel);
+            } catch (JsonException e) {
+                throw new PojoException("Invalid value for key '" + key + "'", e);
+            }
+            var ok = mapUpdater.updateMap(args, key, value);
             if (!ok) {
                 throw new JsonException(keyIndex, "Duplicate key: " + key);
             }

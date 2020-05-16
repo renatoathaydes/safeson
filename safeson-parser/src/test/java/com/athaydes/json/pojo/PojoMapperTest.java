@@ -115,6 +115,9 @@ public class PojoMapperTest {
         assertSame(helloKey, mapper.keyFor(helloBytes, helloBytes.length));
         assertSame(countKey, mapper.keyFor(countBytes, countBytes.length));
         assertSame(countKey, mapper.keyFor(countBytes, countBytes.length));
+
+        // verify only the correct array length is used
+        assertEquals("he", mapper.keyFor(helloBytes, 2));
     }
 
     @Test

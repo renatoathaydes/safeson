@@ -10,6 +10,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class PojoTest {
@@ -20,6 +21,15 @@ public class PojoTest {
         var smallPojo = parser.parse("{\"hello\":\"Ola\",\"count\":32}", SmallPojo.class);
         assertEquals("Ola", smallPojo.getHello());
         assertEquals(32, smallPojo.getCount());
+    }
+
+    @Test
+    void canDeserializeSmallPojoIgnoringExtraFields() {
+        var parser = new JSON(Pojos.of(SmallPojo.class));
+        var smallPojo = parser.parse("{ \"extra\": true, \"hello\":\"Privyet\", " +
+                "\"sub\": {\"key\": 1}, \"count\":100, \"array\": [1,2,3]}", SmallPojo.class);
+        assertEquals("Privyet", smallPojo.getHello());
+        assertEquals(100, smallPojo.getCount());
     }
 
     @Test
@@ -73,6 +83,74 @@ public class PojoTest {
         assertEquals(List.of("hello", "bye"), largerPojo.strings);
         assertEquals(Map.of(), largerPojo.stringsMap);
         assertFalse(largerPojo.optionalPojo.isPresent());
+    }
+
+    @Test
+    void canDeserializeLargerPojoWithNullOptionalArgument() {
+        var parser = new JSON(Pojos.of(SmallPojo.class, LargerPojo.class));
+        var largerPojo = parser.parse("{" +
+                "\"isTrue\": false," +
+                "\"level\": 55," +
+                "\"many\": 123," +
+                "\"strings\": []," +
+                "\"smallPojo\": {\"hello\":\"OI\",\"count\":999}," +
+                "\"stringsMap\": {}," +
+                "\"optionalPojo\": null" +
+                "}", LargerPojo.class);
+        /*
+        (SmallPojo smallPojo, boolean isTrue, long many, double level, List<String> strings,
+                      Map<String, List<String>> stringsMap, Optional<SmallPojo> optionalPojo)
+         */
+        assertEquals("OI", largerPojo.smallPojo.getHello());
+        assertEquals(999, largerPojo.smallPojo.getCount());
+        assertFalse(largerPojo.isTrue);
+        assertEquals(123, largerPojo.many);
+        assertEquals(55.0, largerPojo.level, 1e-15);
+        assertEquals(List.of(), largerPojo.strings);
+        assertEquals(Map.of(), largerPojo.stringsMap);
+        assertFalse(largerPojo.optionalPojo.isPresent());
+    }
+
+    @Test
+    void rejectsPojoWithWrongType() {
+        var parser = new JSON(Pojos.of(SmallPojo.class, LargerPojo.class));
+        var error = assertThrows(PojoException.class, () -> parser.parse("{" +
+                // isTrue has wrong type
+                "\"isTrue\": \"no\"," +
+                "\"level\": 2.56," +
+                "\"many\": 950332," +
+                "\"strings\": [\"hello\", \"bye\"]," +
+                "\"smallPojo\": {\"hello\":\"OI\",\"count\":999}," +
+                "\"stringsMap\": {}" +
+                "}", LargerPojo.class));
+        assertEquals("Invalid value for key 'isTrue'", error.getMessage());
+    }
+
+    @Test
+    void rejectsPojoWithWrongOptionalType() {
+        var parser = new JSON(Pojos.of(SmallPojo.class, LargerPojo.class));
+        var error = assertThrows(PojoException.class, () -> parser.parse("{" +
+                "\"isTrue\": true," +
+                "\"level\": 2.56," +
+                "\"many\": 950332," +
+                "\"strings\": []," +
+                "\"smallPojo\": {\"hello\":\"OI\",\"count\":999}," +
+                "\"stringsMap\": {}," +
+                // optionalPojo should be object
+                "\"optionalPojo\": \"wrong\"" +
+                "}", LargerPojo.class));
+        assertEquals("Invalid value for key 'optionalPojo'", error.getMessage());
+    }
+
+    @Test
+    void rejectsPojoMissingMandatoryFields() {
+        var parser = new JSON(Pojos.of(SmallPojo.class));
+        var error = assertThrows(PojoException.class, () ->
+                parser.parse("{\"foo\":\"Ola\",\"count\":32}", SmallPojo.class));
+
+        assertEquals("Unable to create instance of class com.athaydes.json.pojo.SmallPojo, " +
+                        "available fields do not match any available constructor: [foo, count]",
+                error.getMessage());
     }
 }
 
