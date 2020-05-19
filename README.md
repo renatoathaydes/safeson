@@ -69,9 +69,8 @@ SafeSON also supports parsing JSON objects into POJOs (Plain-Old-Java-Object).
 
 > As soon as records are released into Java, SafeSON will be able to support them with very little change.
 
-POJOs are expected to be similar to the upcoming Java records:
+POJOs are expected to be similar to the upcoming [Java records](https://blogs.oracle.com/javamagazine/records-come-to-java):
 
-* Immutable.
 * One or more constructors define the fields required to build it.
 * Must be compiled with the `-parameters` option (to keep parameter names in bytecode).
 
@@ -108,8 +107,8 @@ public class Main {
 }
 
 final class Person {
-    private final String name;
-    private final int age;
+    final String name;
+    final int age;
     public Person(String name, int age) {
         this.name = name;
         this.age = age;
@@ -117,11 +116,11 @@ final class Person {
 }
 ```
 
-Notice that only the constructor parameter names matter. Fields are not used.
+Notice that only the constructor parameter names matter. Fields and getters are not used.
 
 The JSON object may contain extra fields that are not present in the POJO's constructors.
 
 `Optional` can be used in constructor parameters to allow JSON objects missing certain fields to de-serialize into
-a POJO, but use the fields if available.
+a POJO. The field will be set if present, but will be an instance of `Optional.empty` otherwise.
 
 POJOs can have nested POJOs as long as their types can also be de-serialized by SafeSON. 
