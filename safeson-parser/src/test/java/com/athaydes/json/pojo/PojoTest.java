@@ -152,6 +152,17 @@ public class PojoTest {
                         "available fields do not match any available constructor: [foo, count]",
                 error.getMessage());
     }
+
+    @Test
+    void readmeExample() {
+        var parser = new JSON(Pojos.of(Person.class));
+        var person = parser.parse("{\n" +
+                "  \"name\": \"Joe\",\n" +
+                "  \"age\": 15\n" +
+                "}", Person.class);
+        assertEquals("Joe", person.name);
+        assertEquals(15, person.age);
+    }
 }
 
 final class SmallPojo {
@@ -240,5 +251,15 @@ final class TakesAbstractClass {
 
 final class GenericClass<T> {
     public GenericClass(T t) {
+    }
+}
+
+final class Person {
+    final String name;
+    final int age;
+
+    public Person(String name, int age) {
+        this.name = name;
+        this.age = age;
     }
 }

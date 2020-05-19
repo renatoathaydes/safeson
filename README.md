@@ -63,4 +63,65 @@ Numbers are represented by:
 
 > To force a number into a specific type, use `Number`'s conversion methods like `number.floatValue()` or `number.intValue()`.
 
+## POJO Mapping
 
+SafeSON also supports parsing JSON objects into POJOs (Plain-Old-Java-Object).
+
+> As soon as records are released into Java, SafeSON will be able to support them with very little change.
+
+POJOs are expected to be similar to the upcoming Java records:
+
+* Immutable.
+* One or more constructors define the fields required to build it.
+* Must be compiled with the `-parameters` option (to keep parameter names in bytecode).
+
+To avoid any possibility of unexpected classes being loaded by SafeSON, all POJO types must be whitelisted
+explicitly when creating a new instance of `JSON` by using the `Pojos` object. 
+
+For example, a JSON object like this:
+
+```json
+{
+  "name": "Joe",
+  "age": 15
+}
+```
+
+Can be de-serialized directly into a POJO like this:
+
+```java
+import com.athaydes.json.JSON;
+import com.athaydes.json.pojo.Pojos;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+public class Main {
+    public static void main(String[] args){
+              var parser = new JSON(Pojos.of(Person.class));
+              var person = parser.parse("{\n" +
+                      "  \"name\": \"Joe\",\n" +
+                      "  \"age\": 15\n" +
+                      "}", Person.class);
+              assertEquals("Joe", person.name);
+              assertEquals(15, person.age);
+    }
+}
+
+final class Person {
+    private final String name;
+    private final int age;
+    public Person(String name, int age) {
+        this.name = name;
+        this.age = age;
+    } 
+}
+```
+
+Notice that only the constructor parameter names matter. Fields are not used.
+
+The JSON object may contain extra fields that are not present in the POJO's constructors.
+
+`Optional` can be used in constructor parameters to allow JSON objects missing certain fields to de-serialize into
+a POJO, but use the fields if available.
+
+POJOs can have nested POJOs as long as their types can also be de-serialized by SafeSON. 
