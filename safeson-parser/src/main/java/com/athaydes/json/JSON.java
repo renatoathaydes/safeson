@@ -84,26 +84,20 @@ public final class JSON {
         try {
             skipWhitespace(jsonStream);
             T result;
-            if (Number.class.isAssignableFrom(type)) {
+            if (type.isPrimitive() || Number.class.isAssignableFrom(type)) {
                 if (type.equals(Number.class)) {
                     result = (T) parseNumber(jsonStream);
-                } else if (type.equals(Integer.class)) {
+                } else if (type.equals(Integer.class) || type.equals(int.class)) {
                     result = (T) Integer.valueOf(parseNumber(jsonStream).intValue());
-                } else if (type.equals(Double.class)) {
+                } else if (type.equals(Double.class) || type.equals(double.class)) {
                     result = (T) Double.valueOf(parseNumber(jsonStream).doubleValue());
-                } else if (type.equals(Long.class)) {
+                } else if (type.equals(Long.class) || type.equals(long.class)) {
                     result = (T) Long.valueOf(parseNumber(jsonStream).longValue());
-                } else {
-                    throw new JsonException(jsonStream.index, "Unmapped numeric type (only int, double and long " +
-                            "- boxed or not - are supported): " + type);
-                }
-            } else if (type.isPrimitive()) {
-                if (type.equals(int.class) || type.equals(long.class) || type.equals(double.class)) {
-                    result = (T) parseNumber(jsonStream);
                 } else if (type.equals(boolean.class)) {
                     result = (T) parseBoolean(jsonStream);
                 } else {
-                    throw new JsonException(jsonStream.index, "Unmapped type: " + type);
+                    throw new JsonException(jsonStream.index, "Unmapped numeric type (only int, double and long " +
+                            "- boxed or not - are supported): " + type);
                 }
             } else if (type.equals(String.class)) {
                 result = type.cast(parseString(jsonStream, null));

@@ -121,6 +121,33 @@ public class PojoTest {
     }
 
     @Test
+    void canConvertBoxedNumbers() {
+        var parser = new JSON(Pojos.of(BoxedNumbers.class));
+        var pojo = parser.parse("{\"longN\": 1.25, \"intN\": 2.4, \"doubleN\": 4}", BoxedNumbers.class);
+        assertEquals(1L, pojo.longN);
+        assertEquals(2, pojo.intN);
+        assertEquals(4.0, pojo.doubleN);
+    }
+
+    @Test
+    void canParsePrimitiveNumbers() {
+        var parser = new JSON(Pojos.of(PrimitiveNumbers.class));
+        var pojo = parser.parse("{\"longN\": 1, \"intN\": 2, \"doubleN\": 4}", PrimitiveNumbers.class);
+        assertEquals(1L, pojo.longN);
+        assertEquals(2, pojo.intN);
+        assertEquals(4.0, pojo.doubleN);
+    }
+
+    @Test
+    void canConvertPrimitiveNumbers() {
+        var parser = new JSON(Pojos.of(PrimitiveNumbers.class));
+        var pojo = parser.parse("{\"longN\": 1.25, \"intN\": 2.4, \"doubleN\": 4}", PrimitiveNumbers.class);
+        assertEquals(1L, pojo.longN);
+        assertEquals(2, pojo.intN);
+        assertEquals(4.0, pojo.doubleN);
+    }
+
+    @Test
     void rejectsPojoWithWrongType() {
         var parser = new JSON(Pojos.of(SmallPojo.class, LargerPojo.class));
         var error = assertThrows(PojoException.class, () -> parser.parse("{" +
@@ -313,6 +340,18 @@ final class BoxedNumbers {
     final Double doubleN;
 
     public BoxedNumbers(Long longN, Integer intN, Double doubleN) {
+        this.longN = longN;
+        this.intN = intN;
+        this.doubleN = doubleN;
+    }
+}
+
+final class PrimitiveNumbers {
+    final long longN;
+    final int intN;
+    final double doubleN;
+
+    public PrimitiveNumbers(long longN, int intN, double doubleN) {
         this.longN = longN;
         this.intN = intN;
         this.doubleN = doubleN;
