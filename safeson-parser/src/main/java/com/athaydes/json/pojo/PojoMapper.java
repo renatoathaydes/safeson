@@ -40,9 +40,18 @@ public final class PojoMapper<T> {
         } else {
             var map = new HashMap<String, JsonType>();
             var names = new ArrayList<String>();
+            var typeConflicts = new ArrayList<String>(2);
             for (PojoConstructor<T> constructor : constructors) {
-                map.putAll(constructor.getParamTypeByName());
+                constructor.getParamTypeByName().forEach((name, type) -> {
+                    var oldType = map.put(name, type);
+                    if (oldType != null && !oldType.equals(type)) {
+                        typeConflicts.add(String.format("%s (%s VS %s)", name, oldType, type));
+                    }
+                });
                 names.addAll(constructor.getParamNames());
+            }
+            if (!typeConflicts.isEmpty()) {
+                throw new PojoException("Conflicting types for parameters: " + String.join(", ", typeConflicts));
             }
             parameterTypeByName = Collections.unmodifiableMap(map);
             parameterNames = Collections.unmodifiableList(names);

@@ -112,6 +112,15 @@ public class PojoTest {
     }
 
     @Test
+    void canParseBoxedNumbers() {
+        var parser = new JSON(Pojos.of(BoxedNumbers.class));
+        var pojo = parser.parse("{\"longN\": 1, \"intN\": 2, \"doubleN\": 4}", BoxedNumbers.class);
+        assertEquals(1L, pojo.longN);
+        assertEquals(2, pojo.intN);
+        assertEquals(4.0, pojo.doubleN);
+    }
+
+    @Test
     void rejectsPojoWithWrongType() {
         var parser = new JSON(Pojos.of(SmallPojo.class, LargerPojo.class));
         var error = assertThrows(PojoException.class, () -> parser.parse("{" +
@@ -261,5 +270,51 @@ final class Person {
     public Person(String name, int age) {
         this.name = name;
         this.age = age;
+    }
+}
+
+final class ConflictingParameterTypes {
+    public ConflictingParameterTypes(String a, int b) {
+    }
+
+    public ConflictingParameterTypes(String a, boolean b) {
+    }
+}
+
+final class ConflictingNumberParameterTypes {
+    final String a;
+    final Number b;
+    final Number c;
+
+    public ConflictingNumberParameterTypes(String a, Integer b, Integer c) {
+        this.a = a;
+        this.b = b;
+        this.c = c;
+    }
+
+    public ConflictingNumberParameterTypes(String a, Long c, Double b) {
+        this.a = a;
+        this.b = b;
+        this.c = c;
+    }
+}
+
+final class ConflictingPrimitiveNumberParameterTypes {
+    public ConflictingPrimitiveNumberParameterTypes(String a, int b, int c) {
+    }
+
+    public ConflictingPrimitiveNumberParameterTypes(String a, long c, double b) {
+    }
+}
+
+final class BoxedNumbers {
+    final Long longN;
+    final Integer intN;
+    final Double doubleN;
+
+    public BoxedNumbers(Long longN, Integer intN, Double doubleN) {
+        this.longN = longN;
+        this.intN = intN;
+        this.doubleN = doubleN;
     }
 }

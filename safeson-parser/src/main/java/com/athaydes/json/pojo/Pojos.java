@@ -11,6 +11,7 @@ public final class Pojos {
     public static final Pojos EMPTY = new Pojos(Map.of());
 
     private static final Set<Class<?>> NATIVE_TYPES = Set.of(int.class, long.class, double.class, boolean.class,
+            Integer.class, Long.class, Double.class, Boolean.class,
             String.class, List.class, Map.class);
 
     private final Map<? extends Class<?>, ? extends PojoMapper<?>> mappers;

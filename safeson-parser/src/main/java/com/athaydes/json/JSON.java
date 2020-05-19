@@ -84,11 +84,24 @@ public final class JSON {
         try {
             skipWhitespace(jsonStream);
             T result;
-            if (type.isPrimitive()) {
-                if (type.equals(boolean.class)) {
-                    result = (T) parseBoolean(jsonStream);
-                } else if (type.equals(int.class) || type.equals(long.class) || type.equals(double.class)) {
+            if (Number.class.isAssignableFrom(type)) {
+                if (type.equals(Number.class)) {
                     result = (T) parseNumber(jsonStream);
+                } else if (type.equals(Integer.class)) {
+                    result = (T) Integer.valueOf(parseNumber(jsonStream).intValue());
+                } else if (type.equals(Double.class)) {
+                    result = (T) Double.valueOf(parseNumber(jsonStream).doubleValue());
+                } else if (type.equals(Long.class)) {
+                    result = (T) Long.valueOf(parseNumber(jsonStream).longValue());
+                } else {
+                    throw new JsonException(jsonStream.index, "Unmapped numeric type (only int, double and long " +
+                            "- boxed or not - are supported): " + type);
+                }
+            } else if (type.isPrimitive()) {
+                if (type.equals(int.class) || type.equals(long.class) || type.equals(double.class)) {
+                    result = (T) parseNumber(jsonStream);
+                } else if (type.equals(boolean.class)) {
+                    result = (T) parseBoolean(jsonStream);
                 } else {
                     throw new JsonException(jsonStream.index, "Unmapped type: " + type);
                 }
@@ -98,8 +111,6 @@ public final class JSON {
                 result = type.cast(parseBoolean(jsonStream));
             } else if (type.equals(List.class)) {
                 result = type.cast(parseArray(jsonStream, null, recursionLevel + 1));
-            } else if (Number.class.isAssignableFrom(type)) {
-                result = type.cast(parseNumber(jsonStream));
             } else if (type.equals(Object.class)) {
                 result = type.cast(probeTypeThenParse(jsonStream, recursionLevel + 1));
             } else if (type.equals(Void.class)) {
@@ -377,7 +388,7 @@ public final class JSON {
         throw new JsonException(stream.index, "Invalid literal");
     }
 
-    private Object parseNumber(JsonStream stream) throws IOException {
+    private Number parseNumber(JsonStream stream) throws IOException {
         buffer.reset();
         boolean isNegative;
         long intPart = 0;

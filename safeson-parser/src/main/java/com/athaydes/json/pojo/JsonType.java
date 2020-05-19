@@ -65,6 +65,32 @@ public abstract class JsonType {
         public Class<?> getValueType() {
             return type.getValueType();
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            Compound compound = (Compound) o;
+
+            if (!type.equals(compound.type)) return false;
+            return container == compound.container;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = type.hashCode();
+            result = 31 * result + container.hashCode();
+            return result;
+        }
+
+        @Override
+        public String toString() {
+            return "Compound{" +
+                    "type=" + type +
+                    ", container=" + container +
+                    '}';
+        }
     }
 
     public static final class Scalar extends JsonType {
@@ -84,5 +110,26 @@ public abstract class JsonType {
             return onScalar.applyChecked(this);
         }
 
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            Scalar scalar = (Scalar) o;
+
+            return type.equals(scalar.type);
+        }
+
+        @Override
+        public int hashCode() {
+            return type.hashCode();
+        }
+
+        @Override
+        public String toString() {
+            return "Scalar{" +
+                    "type=" + type +
+                    '}';
+        }
     }
 }

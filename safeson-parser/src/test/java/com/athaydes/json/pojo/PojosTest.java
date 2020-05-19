@@ -56,4 +56,28 @@ public class PojosTest {
         var err = assertThrows(PojoException.class, () -> Pojos.of(GenericClass.class));
         assertEquals("Unmapped types: [class java.lang.Object]", err.getMessage());
     }
+
+    @Test
+    void cannotCreateaPojosWithConflictingFieldTypes() {
+        var err = assertThrows(PojoException.class, () -> Pojos.of(ConflictingParameterTypes.class));
+        assertEquals("Conflicting types for parameters: b (Scalar{type=int} VS Scalar{type=boolean})", err.getMessage());
+    }
+
+    @Test
+    void cannotCreateaPojosWithConflictingNumberFieldTypes() {
+        var err = assertThrows(PojoException.class, () -> Pojos.of(ConflictingNumberParameterTypes.class));
+        assertEquals("Conflicting types for parameters: " +
+                        "b (Scalar{type=class java.lang.Integer} VS Scalar{type=class java.lang.Double}), " +
+                        "c (Scalar{type=class java.lang.Integer} VS Scalar{type=class java.lang.Long})",
+                err.getMessage());
+    }
+
+    @Test
+    void cannotCreateaPojosWithConflictingPrimitiveFieldTypes() {
+        var err = assertThrows(PojoException.class, () -> Pojos.of(ConflictingPrimitiveNumberParameterTypes.class));
+        assertEquals("Conflicting types for parameters: " +
+                        "b (Scalar{type=int} VS Scalar{type=double}), " +
+                        "c (Scalar{type=int} VS Scalar{type=long})",
+                err.getMessage());
+    }
 }
