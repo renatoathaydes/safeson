@@ -38,7 +38,7 @@ The following optional features of JSON parsers are not supported by SafeSON:
   keys that are not quoted.
 * unconstrained numbers. Only numbers that can fit into Java numeric types (`int`, `long`, `double`) are supported. 
 
-## Design principles
+## SafeSON Design Decisions
 
 SafeSON strives to stay simple and small, while running as fast as possible.
 
@@ -69,10 +69,11 @@ SafeSON also supports parsing JSON objects into POJOs (Plain-Old-Java-Object).
 
 > As soon as records are released into Java, SafeSON will be able to support them with very little change.
 
-POJOs are expected to be similar to the upcoming [Java records](https://blogs.oracle.com/javamagazine/records-come-to-java):
+SafeSON was designed to support the upcoming [Java records](https://blogs.oracle.com/javamagazine/records-come-to-java),
+but for now, it can deserialize Java POJOs as long as they:
 
-* One or more constructors define the fields required to build it.
-* Must be compiled with the `-parameters` option (to keep parameter names in bytecode).
+* have one or more public constructors defining the fields required to build it.
+* were compiled with the `-parameters` option (to keep parameter names in bytecode).
 
 To avoid any possibility of unexpected classes being loaded by SafeSON, all POJO types must be whitelisted
 explicitly when creating a new instance of `JSON` by using the `Pojos` object. 
@@ -95,7 +96,7 @@ import com.athaydes.json.pojo.Pojos;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class Main {
-    public static void main(String[] args){
+    public static void main(String[] args) {
               var parser = new JSON(Pojos.of(Person.class));
               var person = parser.parse("{\n" +
                       "  \"name\": \"Joe\",\n" +
@@ -116,11 +117,23 @@ final class Person {
 }
 ```
 
-Notice that only the constructor parameter names matter. Fields and getters are not used.
+Notice that only the constructor parameter names matter. Fields and getters do not matter for SafeSON.
 
-The JSON object may contain extra fields that are not present in the POJO's constructors.
+> Fields that are present in a JSON document but not in a POJO's constructors are ignored.
 
-`Optional` can be used in constructor parameters to allow JSON objects missing certain fields to de-serialize into
-a POJO. The field will be set if present, but will be an instance of `Optional.empty` otherwise.
+### Pojo field types
 
-POJOs can have nested POJOs as long as their types can also be de-serialized by SafeSON. 
+Besides the basic JSON types mentioned before, POJOs may also have fields with the following types:
+
+* `int`
+* `long`
+* `double`
+* `boolean`
+* `Optional` (the type parameter must be one of the supported types)
+* other POJOs
+
+> SafeSON will convert numeric types using `Number::longValue`, `Number::intValue` and `Number::doubleValue` if
+> necessary.
+
+When `Optional` is used in a constructor parameter, it allows JSON objects missing such field to be built without errors.
+ 
