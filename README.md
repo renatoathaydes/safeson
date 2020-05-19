@@ -63,19 +63,16 @@ Numbers are represented by:
 
 > To force a number into a specific type, use `Number`'s conversion methods like `number.floatValue()` or `number.intValue()`.
 
-## POJO Mapping
+## POJO and Record Mapping
 
-SafeSON also supports parsing JSON objects into POJOs (Plain-Old-Java-Object).
+SafeSON supports parsing JSON objects into [Java records](https://blogs.oracle.com/javamagazine/records-come-to-java).
 
-> As soon as records are released into Java, SafeSON will be able to support them with very little change.
+POJOs (Plain Old Java Objects) are also supported as long as they:
 
-SafeSON was designed to support the upcoming [Java records](https://blogs.oracle.com/javamagazine/records-come-to-java),
-but for now, it can deserialize Java POJOs as long as they:
-
-* have one or more public constructors defining the fields required to build it.
+* have one or more public constructors defining the fields required to build them.
 * were compiled with the `-parameters` option (to keep parameter names in bytecode).
 
-To avoid any possibility of unexpected classes being loaded by SafeSON, all POJO types must be whitelisted
+To avoid any possibility of unexpected classes being loaded by SafeSON, all POJO/record types must be whitelisted
 explicitly when creating a new instance of `JSON` by using the `Pojos` object. 
 
 For example, a JSON object like this:
@@ -87,7 +84,26 @@ For example, a JSON object like this:
 }
 ```
 
-Can be de-serialized directly into a POJO like this:
+Can be de-serialized directly into a Java record:
+
+```java
+public record Person(String name, int age) {}
+```
+
+Or a POJO:
+
+```java
+final class Person {
+    final String name;
+    final int age;
+    public Person(String name, int age) {
+        this.name = name;
+        this.age = age;
+    } 
+}
+```
+
+SafeSON Usage:
 
 ```java
 import com.athaydes.json.JSON;
@@ -106,24 +122,15 @@ public class Main {
               assertEquals(15, person.age);
     }
 }
-
-final class Person {
-    final String name;
-    final int age;
-    public Person(String name, int age) {
-        this.name = name;
-        this.age = age;
-    } 
-}
 ```
 
 Notice that only the constructor parameter names matter. Fields and getters do not matter for SafeSON.
 
 > Fields that are present in a JSON document but not in a POJO's constructors are ignored.
 
-### Pojo field types
+### POJO/Record field types
 
-Besides the basic JSON types mentioned before, POJOs may also have fields with the following types:
+Besides the basic JSON types mentioned before, POJOs and records may also have fields with the following types:
 
 * `int`
 * `long`
