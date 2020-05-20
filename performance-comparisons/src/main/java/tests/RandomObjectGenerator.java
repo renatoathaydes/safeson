@@ -1,3 +1,5 @@
+package tests;
+
 import com.devskiller.jfairy.Fairy;
 import com.google.gson.Gson;
 

@@ -1,25 +1,31 @@
+package tests;
+
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.joining;
+import static tests.SafeSONPerfTest.loadAllParsers;
 
 final class CliOptions {
     final int totalRuns;
     final int warmupRuns;
-    final boolean runOnlySafeSON;
+    final Map<String, Parser<?, ?>> parsers;
     final Set<TestType> testTypes;
 
-    public CliOptions(int totalRuns, int warmupRuns, boolean runOnlySafeSON, Set<TestType> testTypes) {
+    public CliOptions(int totalRuns, int warmupRuns, Map<String, Parser<?, ?>> parsers, Set<TestType> testTypes) {
         this.totalRuns = totalRuns;
         this.warmupRuns = warmupRuns;
-        this.runOnlySafeSON = runOnlySafeSON;
+        this.parsers = parsers;
         this.testTypes = testTypes;
     }
 
     static CliOptions of(String[] args) {
         int totalRuns = 1100;
         int warmupRuns = 100;
-        boolean runOnlySafeSON = false;
         Set<TestType> testTypes = Set.of(TestType.INTS, TestType.RAP);
+        Map<String, Parser<?, ?>> parsers = loadAllParsers();
         for (int i = 0; i < args.length; i++) {
             var opt = args[i];
             switch (opt) {
@@ -27,18 +33,32 @@ final class CliOptions {
                     if (i + 1 < args.length) {
                         totalRuns = Integer.parseInt(args[++i]);
                     } else {
-                        return usage("Missing argument for runs");
+                        return usage("Missing argument for runs",parsers.keySet());
                     }
                     break;
                 case "warmups":
                     if (i + 1 < args.length) {
                         warmupRuns = Integer.parseInt(args[++i]);
                     } else {
-                        return usage("Missing argument for warmup");
+                        return usage("Missing argument for warmup", parsers.keySet());
                     }
                     break;
-                case "safeson":
-                    runOnlySafeSON = true;
+                case "parsers":
+                    if (i + 1 < args.length) {
+                        var selectedParsers = Arrays.stream(args[++i].split(",")).map(String::trim)
+                                .collect(Collectors.toSet());
+                        if (!parsers.keySet().containsAll(selectedParsers)) {
+                            return usage("Invalid parsers argument, valid parsers are " + parsers, parsers.keySet());
+                        } else {
+                            parsers.keySet().removeIf(p -> !selectedParsers.contains(p));
+                            if (parsers.isEmpty()) {
+                                System.err.println("No parsers selected!");
+                                System.exit(1);
+                            }
+                        }
+                    } else {
+                        return usage("Missing argument for tests", parsers.keySet());
+                    }
                     break;
                 case "tests":
                     if (i + 1 < args.length) {
@@ -47,17 +67,18 @@ final class CliOptions {
                                 .map(TestType::valueOf)
                                 .collect(Collectors.toSet());
                     } else {
-                        return usage("Missing argument for tests");
+                        return usage("Missing argument for tests", parsers.keySet());
                     }
                     break;
                 default:
-                    return usage("Bad option: " + opt);
+                    return usage("Bad option: " + opt, parsers.keySet());
             }
         }
-        return new CliOptions(totalRuns, warmupRuns, runOnlySafeSON, testTypes);
+        return new CliOptions(totalRuns, warmupRuns, parsers, testTypes);
     }
 
-    private static CliOptions usage(String error) {
+    private static CliOptions usage(String error, Set<String> parsers) {
+        var parserItems = parsers.stream().sorted().map(s-> "    " + s + "\n").collect(joining());
         System.out.println("ERROR - " + error);
         System.out.println("\nSafeSON Performance Tests\n\n" +
                 "Usage:\n" +
@@ -66,8 +87,10 @@ final class CliOptions {
                 "Options:\n\n" +
                 "    runs <n>       - number of total runs\n" +
                 "    warmups <n>    - numberof warmup runs (not measured)\n" +
-                "    safeson        - run only SafeSON\n" +
-                "    tests <values> - tests to run\n\n" +
+                "    parsers <name> - run only named parsers (comma-separated)\n" +
+                "    tests <values> - tests to run (comma-separated)\n\n" +
+                "Available parsers:\n\n" +
+                parserItems + "\n" +
                 "Available tests:\n\n" +
                 "    ints   - array of 1 million random integers\n" +
                 "    rand   - random object from memory\n" +
