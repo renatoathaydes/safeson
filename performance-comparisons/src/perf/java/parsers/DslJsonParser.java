@@ -1,6 +1,7 @@
 package parsers;
 
 import com.dslplatform.json.DslJson;
+import data.TestObject;
 import tests.Parser;
 
 import java.io.InputStream;
@@ -28,6 +29,11 @@ public final class DslJsonParser implements Parser<Map<?, ?>, long[]> {
     @Override
     public long[] parseArray(InputStream stream) throws Exception {
         return json.deserialize(long[].class, stream);
+    }
+
+    @Override
+    public TestObject parsePojo(InputStream stream) throws Exception {
+        return json.deserialize(TestObject.class, stream);
     }
 
     @Override

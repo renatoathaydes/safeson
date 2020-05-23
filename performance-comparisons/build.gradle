@@ -19,17 +19,37 @@ jar {
     }
 
     from {
-        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+        configurations.perfRuntimeClasspath.collect { zipTree(it) } +
+                compilePerfJava.outputs + processPerfResources.outputs
     }
 }
 
-dependencies {
-    implementation 'com.athaydes.json:safeson-parser:1.1-SNAPSHOT'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.11.0'
-    implementation 'com.google.code.gson:gson:2.8.6'
-    implementation 'com.eclipsesource.minimal-json:minimal-json:0.9.5'
-    implementation 'com.dslplatform:dsl-json:1.9.5'
+sourceSets {
+    perf {
+        java {
+            srcDir 'src/perf/java'
+            compileClasspath += sourceSets.main.output
+            runtimeClasspath += sourceSets.main.output
+        }
+    }
+}
 
-    implementation 'com.devskiller:jfairy:0.6.4'
-    runtimeClasspath 'org.slf4j:slf4j-simple:1.7.30'
+configurations {
+    perfImplementation.extendsFrom implementation
+    perfRuntimeClasspath.extendsFrom runtimeClasspath
+}
+
+compileJava {
+    options.compilerArgs += '-parameters'
+}
+
+dependencies {
+    perfImplementation 'com.athaydes.json:safeson-parser:1.1-SNAPSHOT'
+    perfImplementation 'com.fasterxml.jackson.core:jackson-databind:2.11.0'
+    perfImplementation 'com.google.code.gson:gson:2.8.6'
+    perfImplementation 'com.eclipsesource.minimal-json:minimal-json:0.9.5'
+    perfImplementation 'com.dslplatform:dsl-json:1.9.5'
+
+    perfImplementation 'com.devskiller:jfairy:0.6.4'
+    perfRuntimeClasspath 'org.slf4j:slf4j-simple:1.7.30'
 }

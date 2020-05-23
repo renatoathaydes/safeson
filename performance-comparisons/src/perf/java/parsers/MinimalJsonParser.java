@@ -3,6 +3,7 @@ package parsers;
 import com.eclipsesource.json.Json;
 import com.eclipsesource.json.JsonArray;
 import com.eclipsesource.json.JsonObject;
+import data.TestObject;
 import tests.Parser;
 
 import java.io.InputStream;
@@ -29,6 +30,11 @@ public final class MinimalJsonParser implements Parser<JsonObject, JsonArray> {
     @Override
     public JsonArray parseArray(InputStream stream) throws Exception {
         return Json.parse(new InputStreamReader(stream, StandardCharsets.UTF_8)).asArray();
+    }
+
+    @Override
+    public TestObject parsePojo(InputStream stream) throws Exception {
+        throw new UnsupportedOperationException("minimal-json does not support data binding");
     }
 
     @Override

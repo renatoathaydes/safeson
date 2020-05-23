@@ -2,6 +2,7 @@ package parsers;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import data.TestObject;
 import tests.Parser;
 
 import java.io.InputStream;
@@ -27,6 +28,11 @@ public final class JacksonParser implements Parser<JsonNode, JsonNode> {
     @Override
     public JsonNode parseArray(InputStream stream) throws Exception {
         return mapper.readTree(stream);
+    }
+
+    @Override
+    public TestObject parsePojo(InputStream stream) throws Exception {
+        return mapper.readValue(stream, TestObject.class);
     }
 
     @Override

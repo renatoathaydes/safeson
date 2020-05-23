@@ -24,7 +24,7 @@ final class CliOptions {
     static CliOptions of(String[] args) {
         int totalRuns = 1100;
         int warmupRuns = 100;
-        Set<TestType> testTypes = Set.of(TestType.INTS, TestType.RAP);
+        Set<TestType> testTypes = Arrays.stream(TestType.values()).collect(Collectors.toSet());
         Map<String, Parser<?, ?>> parsers = loadAllParsers();
         for (int i = 0; i < args.length; i++) {
             var opt = args[i];
@@ -33,7 +33,7 @@ final class CliOptions {
                     if (i + 1 < args.length) {
                         totalRuns = Integer.parseInt(args[++i]);
                     } else {
-                        return usage("Missing argument for runs",parsers.keySet());
+                        return usage("Missing argument for runs", parsers.keySet());
                     }
                     break;
                 case "warmups":
@@ -74,11 +74,14 @@ final class CliOptions {
                     return usage("Bad option: " + opt, parsers.keySet());
             }
         }
+        if (warmupRuns >= totalRuns) {
+            return usage("Bad arguments: warmups must be less than (total) runs", parsers.keySet());
+        }
         return new CliOptions(totalRuns, warmupRuns, parsers, testTypes);
     }
 
     private static CliOptions usage(String error, Set<String> parsers) {
-        var parserItems = parsers.stream().sorted().map(s-> "    " + s + "\n").collect(joining());
+        var parserItems = parsers.stream().sorted().map(s -> "    " + s + "\n").collect(joining());
         System.out.println("ERROR - " + error);
         System.out.println("\nSafeSON Performance Tests\n\n" +
                 "Usage:\n" +
@@ -93,7 +96,8 @@ final class CliOptions {
                 parserItems + "\n" +
                 "Available tests:\n\n" +
                 "    ints   - array of 1 million random integers\n" +
-                "    rand   - random object from memory\n" +
+                "    pojo   - random object (to POJO) from memory\n" +
+                "    rand   - random object (to Map) from memory\n" +
                 "    rap    - static object from jar resource (from Eclipse RAP)\n");
         System.exit(1);
         return null;
@@ -101,5 +105,5 @@ final class CliOptions {
 }
 
 enum TestType {
-    INTS, RAP, RAND
+    INTS, RAP, RAND, POJO
 }

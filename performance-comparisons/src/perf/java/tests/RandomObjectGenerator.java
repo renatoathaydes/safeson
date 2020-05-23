@@ -2,6 +2,8 @@ package tests;
 
 import com.devskiller.jfairy.Fairy;
 import com.google.gson.Gson;
+import data.Address;
+import data.TestObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -70,43 +72,3 @@ final class RandomObjectGenerator {
 
 }
 
-class TestObject {
-    String name;
-    int age;
-    Address address;
-    List<String> hobbies;
-    boolean subscribed;
-    Map<String, String> mappings;
-
-    public TestObject() {
-    }
-
-    public TestObject(String name, int age, Address address, List<String> hobbies, boolean subscribed,
-                      Map<String, String> mappings) {
-        this.name = name;
-        this.age = age;
-        this.address = address;
-        this.hobbies = hobbies;
-        this.subscribed = subscribed;
-        this.mappings = mappings;
-    }
-}
-
-class Address {
-    String addressLine1;
-    String addressLine2;
-    String city;
-    String street;
-    String streetNumber;
-
-    public Address() {
-    }
-
-    public Address(String addressLine1, String addressLine2, String city, String street, String streetNumber) {
-        this.addressLine1 = addressLine1;
-        this.addressLine2 = addressLine2;
-        this.city = city;
-        this.street = street;
-        this.streetNumber = streetNumber;
-    }
-}

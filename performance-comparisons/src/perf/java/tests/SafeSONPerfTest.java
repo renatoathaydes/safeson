@@ -1,5 +1,7 @@
 package tests;
 
+import data.TestObject;
+
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
@@ -11,9 +13,7 @@ import java.util.Map;
 import java.util.ServiceLoader;
 
 public final class SafeSONPerfTest {
-    static final Map<String, Times> arrayTimesPerParser = new HashMap<>();
-    static final Map<String, Times> staticObjectTimesPerParser = new HashMap<>();
-    static final Map<String, Times> randomObjectTimesPerParser = new HashMap<>();
+    static final Map<TestType, Map<String, Times>> times = new HashMap<>();
 
     public static void main(String[] args) throws Exception {
         var options = CliOptions.of(args);
@@ -33,7 +33,7 @@ public final class SafeSONPerfTest {
         for (Parser<?, ?> parser : ServiceLoader.load(Parser.class)) {
             parsers.put(parser.cliId(), parser);
         }
-        System.out.println("PARSERS:"+parsers);
+        System.out.println("PARSERS" + parsers);
         return parsers;
     }
 
@@ -48,8 +48,7 @@ public final class SafeSONPerfTest {
                 var total = System.nanoTime() - start;
                 parser.verifyArraySize(array, 1_000_000);
                 if (collectTime) {
-                    arrayTimesPerParser.computeIfAbsent(parser.name(),
-                            (ignore) -> new Times(options.totalRuns - options.warmupRuns)).add(total);
+                    collectTime(parser, options, total, TestType.INTS);
                 }
             }
         }
@@ -61,8 +60,7 @@ public final class SafeSONPerfTest {
                 var total = System.nanoTime() - start;
                 parser.verifyObjectSize(object, 2);
                 if (collectTime) {
-                    staticObjectTimesPerParser.computeIfAbsent(parser.name(),
-                            (ignore) -> new Times(options.totalRuns - options.warmupRuns)).add(total);
+                    collectTime(parser, options, total, TestType.RAP);
                 }
             }
         }
@@ -73,23 +71,48 @@ public final class SafeSONPerfTest {
             var total = System.nanoTime() - start;
             parser.verifyObjectSize(object, 6);
             if (collectTime) {
-                randomObjectTimesPerParser.computeIfAbsent(parser.name(),
-                        (ignore) -> new Times(options.totalRuns - options.warmupRuns)).add(total);
+                collectTime(parser, options, total, TestType.RAND);
             }
         }
+        if (options.testTypes.contains(TestType.POJO)) {
+            var json = new ByteArrayInputStream(RandomObjectGenerator.generateRandom().getBytes(StandardCharsets.UTF_8));
+            var start = System.nanoTime();
+            try {
+                TestObject object = parser.parsePojo(json);
+                var total = System.nanoTime() - start;
+                parser.verifyPojo(object);
+                if (collectTime) {
+                    collectTime(parser, options, total, TestType.POJO);
+                }
+            } catch (Exception e) {
+                if (collectTime) {
+                    collectTime(parser, options, -1L, TestType.POJO);
+                }
+            }
+        }
+    }
+
+    private static void collectTime(Parser<?, ?> parser, CliOptions options,
+                                    long total, TestType testType) {
+        times.computeIfAbsent(testType, k -> new HashMap<>())
+                .computeIfAbsent(parser.name(),
+                        (ignore) -> new Times(options.totalRuns - options.warmupRuns)).add(total);
     }
 
     private static void printResultsAsCsv(CliOptions options) {
         var measuredRuns = options.totalRuns - options.warmupRuns;
         List<TestResult> results = new ArrayList<>();
-        if (options.testTypes.contains(TestType.INTS)) {
-            results.add(new TestResult("Int Array", arrayTimesPerParser));
+        if (times.containsKey(TestType.INTS)) {
+            results.add(new TestResult("Int Array", times.get(TestType.INTS)));
         }
-        if (options.testTypes.contains(TestType.RAP)) {
-            results.add(new TestResult("Static Object", staticObjectTimesPerParser));
+        if (times.containsKey(TestType.RAP)) {
+            results.add(new TestResult("Static Object", times.get(TestType.RAP)));
         }
-        if (options.testTypes.contains(TestType.RAND)) {
-            results.add(new TestResult("Random Object", randomObjectTimesPerParser));
+        if (times.containsKey(TestType.RAND)) {
+            results.add(new TestResult("Random Object", times.get(TestType.RAND)));
+        }
+        if (times.containsKey(TestType.POJO)) {
+            results.add(new TestResult("Random POJO", times.get(TestType.POJO)));
         }
         CsvReporter.printReport(results, measuredRuns);
     }
