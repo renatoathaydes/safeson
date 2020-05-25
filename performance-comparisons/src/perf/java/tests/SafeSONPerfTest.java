@@ -46,7 +46,7 @@ public final class SafeSONPerfTest {
                 var start = System.nanoTime();
                 Arr array = parser.parseArray(json);
                 var total = System.nanoTime() - start;
-                parser.verifyArraySize(array, 1_000_000);
+                parser.verifyArraySize(array, 100_000);
                 if (collectTime) {
                     collectTime(parser, options, total, TestType.INTS);
                 }

@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
-final class RandomObjectGenerator {
+public final class RandomObjectGenerator {
 
     private static final Random rand = new Random();
 
@@ -37,7 +37,7 @@ final class RandomObjectGenerator {
             "體育", "唱歌", "樹擁抱", "電子遊戲", "園藝", "盆栽", "忍者", "釣り", "偽のガールフレンド", "ロボット"
     };
 
-    static String generateRandom() {
+    public static String generateRandom() {
         Fairy fairy = fairies[rand.nextInt(fairies.length)];
         var person = fairy.person();
         var address = person.getAddress();

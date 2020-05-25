@@ -32,15 +32,49 @@ sourceSets {
             runtimeClasspath += sourceSets.main.output
         }
     }
+    jmh {
+        java {
+            srcDir 'src/jmh/java'
+            compileClasspath += sourceSets.perf.output + sourceSets.main.output
+            runtimeClasspath += sourceSets.perf.output + sourceSets.main.output
+        }
+    }
 }
 
 configurations {
     perfImplementation.extendsFrom implementation
     perfRuntimeClasspath.extendsFrom runtimeClasspath
+    jmhImplementation.extendsFrom perfImplementation
+    jmhRuntimeClasspath.extendsFrom perfRuntimeClasspath
 }
 
 compileJava {
     options.compilerArgs += '-parameters'
+}
+
+task jmhJar(type: org.gradle.jvm.tasks.Jar) {
+    from {
+        configurations.jmhRuntimeClasspath.collect { zipTree(it) } +
+                compilePerfJava.outputs + processPerfResources.outputs + compileJmhJava.outputs
+    }
+    manifest {
+        attributes("Main-Class": "org.openjdk.jmh.Main")
+    }
+    archiveName 'jmh-run.jar'
+}
+
+task generateJsonIntArray(type: JavaExec) { self ->
+    def outputFile = file('src/perf/resources/integers.json').absolutePath
+    outputs.file(outputFile)
+    classpath = sourceSets.main.runtimeClasspath
+    main 'generators.RandomIntArrayGenerator'
+    args outputFile
+    processPerfResources.dependsOn self
+}
+
+task cleanJsonIntArray(type: Delete) { self ->
+    delete generateJsonIntArray.outputs
+    clean.dependsOn self
 }
 
 dependencies {
@@ -51,5 +85,9 @@ dependencies {
     perfImplementation 'com.dslplatform:dsl-json:1.9.5'
 
     perfImplementation 'com.devskiller:jfairy:0.6.4'
+
+    jmhImplementation 'org.openjdk.jmh:jmh-core:1.23'
+    jmhAnnotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:1.23'
+
     perfRuntimeClasspath 'org.slf4j:slf4j-simple:1.7.30'
 }

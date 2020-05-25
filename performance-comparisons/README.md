@@ -47,6 +47,7 @@ Available parsers:
 Available tests:
 
     ints   - array of 1 million random integers
+    pojo   - random object (to POJO) from memory
     rand   - random object from memory
     rap    - static object from jar resource (from Eclipse RAP)
 ```

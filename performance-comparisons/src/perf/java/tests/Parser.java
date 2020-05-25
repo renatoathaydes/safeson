@@ -25,7 +25,7 @@ public interface Parser<Obj, Arr> {
 
     default void assertSize(int expectedSize, int actualSize) {
         if (expectedSize != actualSize) {
-            throw new AssertionError(name() + " FAILED: expected size" + expectedSize + " but was " + actualSize);
+            throw new AssertionError(name() + " FAILED: expected size " + expectedSize + " but was " + actualSize);
         }
     }
 }
