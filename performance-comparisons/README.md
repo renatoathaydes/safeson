@@ -8,7 +8,14 @@ several popular Java JSON Parsers:
 * minimal-json
 * DSL-JSON
 
-## Building
+There are two types of benchmarks:
+
+* Tests that collect times for each run, generating CSV results. Located at [src/perf/java](src/perf/java).
+* [JMH](http://openjdk.java.net/projects/code-tools/jmh/) benchmarks. Located at [src/jmh/java](src/jmh/java).
+
+## Collecting times for each run
+
+### Building
 
 Run:
 
@@ -16,7 +23,7 @@ Run:
 ./gradlew jar
 ```
 
-## Running tests
+### Running tests
 
 To execute the tests, use the runnable jar created by Gradle:
 
@@ -50,4 +57,22 @@ Available tests:
     pojo   - random object (to POJO) from memory
     rand   - random object from memory
     rap    - static object from jar resource (from Eclipse RAP)
+```
+
+## JMH Benchmarks
+
+### Building
+
+Run:
+
+```bash
+./gradlew jmhJar
+```
+
+### Running tests
+
+To execute the benchmarks, use the runnable jar created by Gradle:
+
+```bash
+java -jar build/libs/jmh-run.jar
 ```
