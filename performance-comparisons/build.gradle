@@ -54,7 +54,7 @@ compileJava {
 
 task jmhJar(type: org.gradle.jvm.tasks.Jar) {
     from {
-        configurations.jmhRuntimeClasspath.collect { zipTree(it) } +
+        configurations.jmhRuntimeClasspath.collect { zipTree(it) } + compileJava.outputs +
                 compilePerfJava.outputs + processPerfResources.outputs + compileJmhJava.outputs
     }
     manifest {

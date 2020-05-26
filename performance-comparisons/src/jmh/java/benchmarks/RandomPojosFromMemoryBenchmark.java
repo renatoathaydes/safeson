@@ -6,6 +6,7 @@ import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
+import parsers.DslJsonParser;
 import parsers.GsonParser;
 import parsers.JacksonParser;
 import parsers.MinimalJsonParser;
@@ -14,7 +15,7 @@ import tests.RandomObjectGenerator;
 
 import static benchmarks.BenchmarkHelper.runWithPojo;
 
-public class RandomMemoryPojosBenchmark {
+public class RandomPojosFromMemoryBenchmark {
 
     @State(Scope.Thread)
     public static class ParserState {
@@ -23,6 +24,7 @@ public class RandomMemoryPojosBenchmark {
         JacksonParser jackson;
         MinimalJsonParser minJson;
         SafeSONParser safeson;
+        DslJsonParser dslJson;
 
         String[] objects = new String[POJO_COUNT];
         int objectIndex = 0;
@@ -33,6 +35,8 @@ public class RandomMemoryPojosBenchmark {
             jackson = new JacksonParser();
             minJson = new MinimalJsonParser();
             safeson = new SafeSONParser();
+            dslJson = new DslJsonParser();
+
             for (int i = 0; i < POJO_COUNT; i++) {
                 objects[i] = RandomObjectGenerator.generateRandom();
             }
@@ -61,6 +65,11 @@ public class RandomMemoryPojosBenchmark {
     @Benchmark
     public TestObject safesonPojo(ParserState input) throws Exception {
         return runWithPojo(input.safeson, input.nextPojo());
+    }
+
+    @Benchmark
+    public TestObject dslJsonPojo(ParserState input) throws Exception {
+        return runWithPojo(input.dslJson, input.nextPojo());
     }
 
 }

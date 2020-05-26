@@ -5,6 +5,7 @@ import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
+import parsers.DslJsonParser;
 import parsers.GsonParser;
 import parsers.JacksonParser;
 import parsers.MinimalJsonParser;
@@ -21,6 +22,7 @@ public class InputStreamSourcesBenchmark {
         JacksonParser jackson;
         MinimalJsonParser minJson;
         SafeSONParser safeson;
+        DslJsonParser dslJson;
 
         @Setup(Level.Iteration)
         public void setup() {
@@ -28,6 +30,7 @@ public class InputStreamSourcesBenchmark {
             jackson = new JacksonParser();
             minJson = new MinimalJsonParser();
             safeson = new SafeSONParser();
+            dslJson = new DslJsonParser();
         }
     }
 
@@ -52,6 +55,11 @@ public class InputStreamSourcesBenchmark {
     }
 
     @Benchmark
+    public Object dslJsonObject(ParserState input) throws Exception {
+        return runWithObject(input.dslJson);
+    }
+
+    @Benchmark
     public Object gsonIntegers(ParserState input) throws Exception {
         return runWithIntegers(input.gson);
     }
@@ -69,6 +77,11 @@ public class InputStreamSourcesBenchmark {
     @Benchmark
     public Object safesonIntegers(ParserState input) throws Exception {
         return runWithIntegers(input.safeson);
+    }
+
+    @Benchmark
+    public Object dslJsonIntegers(ParserState input) throws Exception {
+        return runWithIntegers(input.dslJson);
     }
 
 }
