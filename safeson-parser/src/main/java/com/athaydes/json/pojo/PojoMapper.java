@@ -1,5 +1,7 @@
 package com.athaydes.json.pojo;
 
+import com.athaydes.json.DuplicateKeyStrategy;
+
 import java.lang.reflect.Constructor;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -8,8 +10,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Stream;
 
 import static java.util.Comparator.comparing;
@@ -27,6 +27,7 @@ public final class PojoMapper<T> {
     private final Map<String, JsonType> parameterTypeByName;
     private final List<String> parameterNames;
     private final List<PojoConstructor<T>> constructors;
+    private final PojoCreator<T> creator;
 
     private PojoMapper(Class<T> pojoType, List<PojoConstructor<T>> constructors) {
         this.pojoType = new JsonType.Scalar(pojoType);
@@ -56,6 +57,7 @@ public final class PojoMapper<T> {
             parameterTypeByName = Collections.unmodifiableMap(map);
             parameterNames = Collections.unmodifiableList(names);
         }
+        this.creator = new PojoCreator<>(constructors);
         this.keyBytesCache = createCache();
         this.possibilities = new boolean[keyBytesCache.length];
     }
@@ -112,29 +114,20 @@ public final class PojoMapper<T> {
         return pojoType;
     }
 
+    // keys are cached, hence we may compare them by identity
+    @SuppressWarnings("StringEquality")
     public JsonType getTypeOf(String key) {
-        return parameterTypeByName.get(key);
-    }
-
-    public T create(Map<String, Object> args) throws Exception {
-        Set<String> argNames = args.keySet();
-        for (PojoConstructor<T> constructor : constructors) {
-            Set<String> paramNames = constructor.getParamNames();
-            if (argNames.containsAll(constructor.getMandatoryParamNames())) {
-                var arguments = new Object[paramNames.size()];
-                int i = 0;
-                for (String paramName : paramNames) {
-                    boolean isOptional = constructor.getTypeOfParameter(paramName)
-                            .match(scalar -> false, compound -> compound.getContainer() == JsonType.Container.OPTIONAL);
-                    arguments[i++] = isOptional
-                            ? (args.containsKey(paramName) ? args.get(paramName) : Optional.empty())
-                            : args.get(paramName);
-                }
-                return constructor.createPojo(arguments);
+        for (Map.Entry<String, JsonType> stringJsonTypeEntry : parameterTypeByName.entrySet()) {
+            if (stringJsonTypeEntry.getKey() == key) {
+                return stringJsonTypeEntry.getValue();
             }
         }
-        throw new PojoException("Unable to create instance of " + pojoType.getValueType() + ", " +
-                "available fields do not match any available constructor: " + argNames);
+        return null;
+    }
+
+    public PojoCreator<T> getCreator(DuplicateKeyStrategy strategy) {
+        creator.start(strategy);
+        return creator;
     }
 
     @SuppressWarnings("unchecked")

@@ -67,8 +67,8 @@ public class PojosTest {
     void cannotCreateaPojosWithConflictingNumberFieldTypes() {
         var err = assertThrows(PojoException.class, () -> Pojos.of(ConflictingNumberParameterTypes.class));
         assertEquals("Conflicting types for parameters: " +
-                        "b (Scalar{type=class java.lang.Integer} VS Scalar{type=class java.lang.Double}), " +
-                        "c (Scalar{type=class java.lang.Integer} VS Scalar{type=class java.lang.Long})",
+                        "c (Scalar{type=class java.lang.Integer} VS Scalar{type=class java.lang.Long}), " +
+                        "b (Scalar{type=class java.lang.Integer} VS Scalar{type=class java.lang.Double})",
                 err.getMessage());
     }
 
@@ -76,8 +76,8 @@ public class PojosTest {
     void cannotCreateaPojosWithConflictingPrimitiveFieldTypes() {
         var err = assertThrows(PojoException.class, () -> Pojos.of(ConflictingPrimitiveNumberParameterTypes.class));
         assertEquals("Conflicting types for parameters: " +
-                        "b (Scalar{type=int} VS Scalar{type=double}), " +
-                        "c (Scalar{type=int} VS Scalar{type=long})",
+                        "c (Scalar{type=int} VS Scalar{type=long}), " +
+                        "b (Scalar{type=int} VS Scalar{type=double})",
                 err.getMessage());
     }
 }

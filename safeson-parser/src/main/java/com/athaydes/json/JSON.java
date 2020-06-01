@@ -11,7 +11,6 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -237,12 +236,11 @@ public final class JSON {
         stream.read();
         skipWhitespace(stream);
         int c = stream.bt;
-        Map<String, Object> args = new HashMap<>();
+        var creator = mapper.getCreator(config.duplicateKeyStrategy());
         if (c == '}') {
             stream.read();
-            return mapper.create(args);
+            return creator.create();
         }
-        var mapUpdater = config.mapUpdater();
         while (c > 0) {
             var keyIndex = stream.index;
             var key = parseString(stream, mapper);
@@ -261,9 +259,10 @@ public final class JSON {
                 break;
             }
             var expectedValueType = mapper.getTypeOf(key);
-            Object value;
+            Object value = null;
             if (expectedValueType == null) {
-                value = probeTypeThenParse(stream, recursionLevel);
+                // TODO discard parsed content
+                probeTypeThenParse(stream, recursionLevel);
             } else if (expectedValueType.match(scalar -> false,
                     compound -> compound.getContainer() == JsonType.Container.OPTIONAL) &&
                     stream.bt == 'n') {
@@ -273,7 +272,7 @@ public final class JSON {
             } catch (JsonException e) {
                 throw new PojoException("Invalid value for key '" + key + "'", e);
             }
-            var ok = mapUpdater.updateMap(args, key, value);
+            var ok = value == null ? true : creator.set(key, value);
             if (!ok) {
                 throw new JsonException(keyIndex, "Duplicate key: " + key);
             }
@@ -289,7 +288,7 @@ public final class JSON {
                 c = stream.bt;
             } else if (c == '}') {
                 stream.read();
-                return mapper.create(args);
+                return creator.create();
             } else if (c < 0) {
                 break;
             } else {

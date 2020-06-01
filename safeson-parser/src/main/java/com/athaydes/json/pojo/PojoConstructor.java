@@ -6,8 +6,8 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +23,7 @@ public final class PojoConstructor<T> {
         this.constructor = constructor;
         Set<String> pNames = new LinkedHashSet<>(parameters.size());
         Set<String> mandatoryPNames = new HashSet<>(parameters.size());
-        Map<String, JsonType> params = new HashMap<>(pNames.size());
+        Map<String, JsonType> params = new LinkedHashMap<>(pNames.size());
         for (Parameter parameter : parameters) {
             var pName = parameter.getName();
             pNames.add(pName);

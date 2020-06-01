@@ -185,7 +185,7 @@ public class PojoTest {
                 parser.parse("{\"foo\":\"Ola\",\"count\":32}", SmallPojo.class));
 
         assertEquals("Unable to create instance of class com.athaydes.json.pojo.SmallPojo, " +
-                        "available fields do not match any available constructor: [foo, count]",
+                        "available fields do not match any available constructor",
                 error.getMessage());
     }
 
